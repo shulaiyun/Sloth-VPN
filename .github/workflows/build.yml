@@ -215,6 +215,10 @@ jobs:
             ninja-build \
             pkg-config \
             libgtk-3-dev \
+            libsecret-1-dev \
+            libjsoncpp-dev \
+            libx11-dev \
+            libxkbcommon-dev \
             libstdc++-12-dev \
             liblzma-dev \
             libayatana-appindicator3-dev \
@@ -226,6 +230,7 @@ jobs:
             xz-utils \
             zip \
             libglu1-mesa
+          sudo apt-get install -y libappindicator3-dev || true
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -238,18 +243,31 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux release bundle
-        run: flutter build linux --release --target=${{ env.BUILD_TARGET }}
+        id: build_linux
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build-logs
+          flutter build linux --release --target=${{ env.BUILD_TARGET }} 2>&1 | tee build-logs/linux-build.log
+          exit ${PIPESTATUS[0]}
 
       - name: Collect Linux artifacts
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p out
-          cp -R build/linux/x64/release/bundle out/SlothVPN-linux-x64
-          tar -czf out/SlothVPN-linux-x64.tar.gz -C out SlothVPN-linux-x64
-          rm -rf out/SlothVPN-linux-x64
+          if [ -d build/linux/x64/release/bundle ]; then
+            cp -R build/linux/x64/release/bundle out/SlothVPN-linux-x64
+            tar -czf out/SlothVPN-linux-x64.tar.gz -C out SlothVPN-linux-x64
+            rm -rf out/SlothVPN-linux-x64
+          fi
+          cp build-logs/*.log out/ 2>/dev/null || true
+          ls -la out
 
       - name: Upload Linux artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts
@@ -257,12 +275,18 @@ jobs:
           retention-days: ${{ inputs.artifact-retention-days }}
           if-no-files-found: error
 
+      - name: Mark Linux build failure
+        if: ${{ steps.build_linux.outcome != 'success' }}
+        shell: bash
+        run: exit 1
+
   macos:
     name: macOS
     if: ${{ inputs.build-macos }}
     runs-on: macos-latest
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
+      COCOAPODS_DISABLE_STATS: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -280,17 +304,36 @@ jobs:
         run: flutter pub get
 
       - name: Build macOS app
-        run: flutter build macos --release --target=${{ env.BUILD_TARGET }}
+        id: build_macos
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build-logs
+          flutter build macos --release --target=${{ env.BUILD_TARGET }} --no-codesign 2>&1 | tee build-logs/macos-build.log
+          exit ${PIPESTATUS[0]}
 
       - name: Collect macOS artifacts
+        if: always()
+        shell: bash
         run: |
           mkdir -p out
-          ditto -c -k --keepParent "build/macos/Build/Products/Release/SlothVPN.app" "out/SlothVPN-macos.zip"
+          if [ -d "build/macos/Build/Products/Release/SlothVPN.app" ]; then
+            ditto -c -k --keepParent "build/macos/Build/Products/Release/SlothVPN.app" "out/SlothVPN-macos.zip"
+          fi
+          cp build-logs/*.log out/ 2>/dev/null || true
+          ls -la out
 
       - name: Upload macOS artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
           path: out/*
           retention-days: ${{ inputs.artifact-retention-days }}
           if-no-files-found: error
+
+      - name: Mark macOS build failure
+        if: ${{ steps.build_macos.outcome != 'success' }}
+        shell: bash
+        run: exit 1

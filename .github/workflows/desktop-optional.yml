@@ -1,0 +1,41 @@
+name: Desktop Optional CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build.yml"
+      - ".github/workflows/desktop-optional.yml"
+      - "linux/**"
+      - "macos/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "hiddify-core/**"
+  workflow_dispatch:
+    inputs:
+      build_linux:
+        description: "Build Linux"
+        required: false
+        default: true
+        type: boolean
+      build_macos:
+        description: "Build macOS"
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-desktop:
+    uses: ./.github/workflows/build.yml
+    with:
+      artifact-retention-days: 14
+      build-android: false
+      build-windows: false
+      build-linux: ${{ github.event_name == 'workflow_dispatch' && inputs.build_linux || true }}
+      build-macos: ${{ github.event_name == 'workflow_dispatch' && inputs.build_macos || true }}
+      package-windows-setup: false

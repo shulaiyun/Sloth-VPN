@@ -10,15 +10,25 @@ on:
         description: "Tag to publish, for example v1.0.1"
         required: true
         type: string
+      build_android:
+        description: "Include Android artifacts"
+        required: false
+        default: false
+        type: boolean
+      build_windows:
+        description: "Include Windows artifacts"
+        required: false
+        default: false
+        type: boolean
       build_linux:
         description: "Include Linux artifacts"
         required: false
-        default: false
+        default: true
         type: boolean
       build_macos:
         description: "Include macOS artifacts"
         required: false
-        default: false
+        default: true
         type: boolean
       package_windows_setup:
         description: "Include Windows setup package"
@@ -38,10 +48,10 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       artifact-retention-days: 30
-      build-android: true
-      build-windows: true
-      build-linux: ${{ github.event_name == 'workflow_dispatch' && inputs.build_linux || false }}
-      build-macos: ${{ github.event_name == 'workflow_dispatch' && inputs.build_macos || false }}
+      build-android: ${{ github.event_name == 'workflow_dispatch' && inputs.build_android || false }}
+      build-windows: ${{ github.event_name == 'workflow_dispatch' && inputs.build_windows || false }}
+      build-linux: ${{ github.event_name == 'workflow_dispatch' && inputs.build_linux || true }}
+      build-macos: ${{ github.event_name == 'workflow_dispatch' && inputs.build_macos || true }}
       package-windows-setup: ${{ github.event_name == 'workflow_dispatch' && inputs.package_windows_setup || false }}
 
   publish:
