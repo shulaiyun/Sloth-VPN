@@ -1,0 +1,26 @@
+﻿{
+  "name": "sloth-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SlothVPN App Gateway (MVP)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "npm run build && node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/node": "^22.12.0",
+    "typescript": "^5.7.3"
+  }
+}
