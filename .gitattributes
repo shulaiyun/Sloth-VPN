@@ -4,3 +4,4 @@ hiddify-core/bin/lib/hiddify-core.so filter=lfs diff=lfs merge=lfs -text
 hiddify-core/bin/*.tar.gz filter=lfs diff=lfs merge=lfs -text
 ios/Frameworks/HiddifyCore.xcframework/** filter=lfs diff=lfs merge=lfs -text
 ios/Frameworks/*.tar.gz filter=lfs diff=lfs merge=lfs -text
+android/app/libs/hiddify-core.aar filter=lfs diff=lfs merge=lfs -text

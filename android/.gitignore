@@ -14,5 +14,6 @@ key.properties
 
 /app/libs/*
 !/app/libs/.gitkeep
+!/app/libs/hiddify-core.aar
 
 /app/.cxx
