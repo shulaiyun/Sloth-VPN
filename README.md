@@ -51,7 +51,8 @@
 
 建议后续将截图放在以下目录：
 
-- `docs/screenshots/home.png`：首页
+- <img width="856" height="629" alt="image" src="https://github.com/user-attachments/assets/408f70e6-4d57-49f3-8d12-7b34581d8397" />
+`：首页
 - `docs/screenshots/nodes.png`：节点页
 - `docs/screenshots/settings.png`：设置页
 - `docs/screenshots/windows-client.png`：Windows 客户端
