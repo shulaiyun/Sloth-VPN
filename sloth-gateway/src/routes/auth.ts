@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+﻿import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { config } from "../config";
 import { AppError, ErrorCodes } from "../errors";
@@ -22,18 +22,22 @@ const htmlEscape = (value: string): string =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-const authDeepLink = (bindId: string, exchangeToken: string): string =>
-  `slothvpn://auth/callback?bind_id=${encodeURIComponent(bindId)}&exchange_token=${encodeURIComponent(exchangeToken)}`;
+const authDeepLink = (bindId: string, exchangeToken: string, deviceId?: string): string =>
+  `slothvpn://auth/callback?bind_id=${encodeURIComponent(bindId)}&exchange_token=${encodeURIComponent(exchangeToken)}${
+    deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : ""
+  }`;
 
-const authCallbackPageUrl = (bindId: string, exchangeToken: string): string =>
-  `${config.publicBaseUrl}/api/app/v1/auth/callback?bind_id=${encodeURIComponent(bindId)}&exchange_token=${encodeURIComponent(exchangeToken)}`;
+const authCallbackPageUrl = (bindId: string, exchangeToken: string, deviceId?: string): string =>
+  `${config.publicBaseUrl}/api/app/v1/auth/callback?bind_id=${encodeURIComponent(bindId)}&exchange_token=${encodeURIComponent(exchangeToken)}${
+    deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : ""
+  }`;
 
 const bindConfirmPage = (bindId: string): string => `<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SlothVPN 账号绑定</title>
+    <title>SlothVPN Account Bind</title>
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin: 0; background: #f6f8fb; color: #111; }
       .wrap { max-width: 680px; margin: 28px auto; padding: 0 16px; }
@@ -57,26 +61,26 @@ const bindConfirmPage = (bindId: string): string => `<!doctype html>
   <body>
     <div class="wrap">
       <div class="card">
-        <h1>绑定 SlothVPN 设备</h1>
-        <p>完成登录后将自动回到 App，并执行订阅同步。</p>
-        <div class="tips">当前绑定 ID：<code>${htmlEscape(bindId)}</code></div>
+        <h1>Bind SlothVPN Device</h1>
+        <p>Sign in to confirm binding. After success, we will return to the App and trigger subscription sync.</p>
+        <div class="tips">Current bind ID: <code>${htmlEscape(bindId)}</code></div>
 
         <form id="bind-form">
           <div class="group">
-            <label for="email">XBoard 账号邮箱</label>
+            <label for="email">XBoard Email</label>
             <input id="email" name="email" type="email" placeholder="you@example.com" />
           </div>
           <div class="group">
-            <label for="password">XBoard 账号密码</label>
-            <input id="password" name="password" type="password" placeholder="输入密码" />
+            <label for="password">XBoard Password</label>
+            <input id="password" name="password" type="password" placeholder="Input password" />
           </div>
           <div class="group">
-            <label for="auth_data">或直接填 auth_data（可选）</label>
+            <label for="auth_data">Or provide auth_data directly (optional)</label>
             <input id="auth_data" name="xboard_auth_data" type="text" placeholder="Bearer xxxxx" />
           </div>
           <div class="btns">
-            <button class="primary" type="submit">确认绑定并回到 App</button>
-            <button class="ghost" id="open-app" type="button">仅打开 App</button>
+            <button class="primary" type="submit">Confirm and Return to App</button>
+            <button class="ghost" id="open-app" type="button">Open App Only</button>
           </div>
         </form>
         <div id="status" class="status"></div>
@@ -101,7 +105,7 @@ const bindConfirmPage = (bindId: string): string => `<!doctype html>
 
         form.addEventListener('submit', async function (event) {
           event.preventDefault();
-          setStatus('正在确认绑定并生成回跳链接...');
+          setStatus('Confirming bind and generating callback link...');
 
           var email = (document.getElementById('email').value || '').trim();
           var password = (document.getElementById('password').value || '').trim();
@@ -123,18 +127,18 @@ const bindConfirmPage = (bindId: string): string => `<!doctype html>
             });
             var result = await response.json();
             if (!response.ok || !result.success) {
-              var msg = (result && result.error && result.error.message) ? result.error.message : '绑定失败';
+              var msg = (result && result.error && result.error.message) ? result.error.message : 'Bind failed';
               throw new Error(msg);
             }
 
             var data = result.data || {};
             var callbackPage = data.callback_page_url || data.callback_url;
-            if (!callbackPage) throw new Error('未返回回跳地址');
+            if (!callbackPage) throw new Error('Callback URL is missing');
 
-            setStatus('绑定成功，正在回到 App...', 'ok');
+            setStatus('Bind succeeded. Returning to App...', 'ok');
             setTimeout(function () { window.location.href = callbackPage; }, 200);
           } catch (error) {
-            setStatus('绑定失败：' + (error && error.message ? error.message : String(error)), 'err');
+            setStatus('Bind failed: ' + (error && error.message ? error.message : String(error)), 'err');
           }
         });
       })();
@@ -143,11 +147,11 @@ const bindConfirmPage = (bindId: string): string => `<!doctype html>
 </html>`;
 
 const authCallbackPage = (deepLink: string, bindId: string): string => `<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SlothVPN 登录回跳</title>
+    <title>SlothVPN Login Callback</title>
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin: 30px; color: #111; }
       .box { max-width: 620px; margin: 0 auto; padding: 18px; border: 1px solid #ddd; border-radius: 12px; }
@@ -158,9 +162,9 @@ const authCallbackPage = (deepLink: string, bindId: string): string => `<!doctyp
   </head>
   <body>
     <div class="box">
-      <h2>登录成功，正在打开 SlothVPN</h2>
-      <p>如果没有自动打开，请点击下方按钮。</p>
-      <a class="btn" href="${htmlEscape(deepLink)}">打开 SlothVPN</a>
+      <h2>Login Succeeded, Returning to SlothVPN</h2>
+      <p>If the app does not open automatically, tap the button below.</p>
+      <a class="btn" href="${htmlEscape(deepLink)}">Open SlothVPN</a>
       <div class="muted">bind_id: <code>${htmlEscape(bindId)}</code></div>
     </div>
     <script>
@@ -168,8 +172,135 @@ const authCallbackPage = (deepLink: string, bindId: string): string => `<!doctyp
     </script>
   </body>
 </html>`;
+const issueSessionTokenSet = (deps: AuthRouteDeps, input: {
+  xboardAuthData: string;
+  xboardToken?: string;
+  userEmail?: string;
+  userUuid?: string;
+}) => {
+  const session = deps.sessions.create({
+    xboardAuthData: input.xboardAuthData,
+    xboardToken: input.xboardToken,
+    userEmail: input.userEmail,
+    userUuid: input.userUuid,
+  });
+
+  const accessToken = signAccessToken(session.sid);
+  const refreshToken = signRefreshToken(session.sid);
+  const pullToken = signPullToken(session.sid);
+
+  return {
+    session,
+    accessToken,
+    refreshToken,
+    pullToken,
+  };
+};
+
+const tokenResponse = (issued: ReturnType<typeof issueSessionTokenSet>) => ({
+  access_token: issued.accessToken,
+  refresh_token: issued.refreshToken,
+  token_type: "Bearer",
+  expires_in: config.accessTokenExpires,
+  session_id: issued.session.sid,
+  subscription_pull_token: issued.pullToken,
+  user: {
+    email: issued.session.userEmail ?? null,
+    uuid: issued.session.userUuid ?? null,
+  },
+});
 
 export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): void => {
+  app.post("/api/app/v1/auth/send-email-verify", async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const email = String(body.email ?? "").trim();
+    if (!email) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email is required");
+    }
+
+    await deps.xboard.sendEmailVerify({
+      email,
+      captchaData: typeof body.captcha_data === "string" ? body.captcha_data : undefined,
+      recaptchaData: typeof body.recaptcha_data === "string" ? body.recaptcha_data : undefined,
+      turnstileData: typeof body.turnstile_data === "string" ? body.turnstile_data : undefined,
+      hcaptchaData: typeof body.hcaptcha_data === "string" ? body.hcaptcha_data : undefined,
+    });
+
+    return ok(reply, {
+      sent: true,
+      email,
+      message: "Email verification sent",
+    });
+  });
+
+  app.post("/api/app/v1/auth/login", async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const email = String(body.email ?? "").trim();
+    const password = String(body.password ?? "").trim();
+    if (!email || !password) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email and password are required");
+    }
+
+    const login = await deps.xboard.login(email, password);
+    const [user, subscribe] = await Promise.all([
+      deps.xboard.getUserInfo(login.authData),
+      deps.xboard.getSubscribe(login.authData),
+    ]);
+    const issued = issueSessionTokenSet(deps, {
+      xboardAuthData: login.authData,
+      xboardToken: login.token,
+      userEmail: user.email,
+      userUuid: subscribe.uuid,
+    });
+
+    request.log.info({ evt: "auth_login_success", email: user.email, sid: issued.session.sid });
+    return ok(reply, {
+      ...tokenResponse(issued),
+      profile: {
+        plan_name: subscribe.plan?.name ?? null,
+        expired_at: subscribe.expired_at ?? null,
+      },
+    });
+  });
+
+  app.post("/api/app/v1/auth/register", async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const email = String(body.email ?? "").trim();
+    const password = String(body.password ?? "").trim();
+    if (!email || !password) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email and password are required");
+    }
+
+    const registered = await deps.xboard.register(email, password, {
+      emailCode: typeof body.email_code === "string" ? body.email_code : undefined,
+      inviteCode: typeof body.invite_code === "string" ? body.invite_code : undefined,
+      captchaData: typeof body.captcha_data === "string" ? body.captcha_data : undefined,
+      recaptchaData: typeof body.recaptcha_data === "string" ? body.recaptcha_data : undefined,
+      turnstileData: typeof body.turnstile_data === "string" ? body.turnstile_data : undefined,
+      hcaptchaData: typeof body.hcaptcha_data === "string" ? body.hcaptcha_data : undefined,
+    });
+
+    const [user, subscribe] = await Promise.all([
+      deps.xboard.getUserInfo(registered.authData),
+      deps.xboard.getSubscribe(registered.authData),
+    ]);
+    const issued = issueSessionTokenSet(deps, {
+      xboardAuthData: registered.authData,
+      xboardToken: registered.token,
+      userEmail: user.email,
+      userUuid: subscribe.uuid,
+    });
+
+    request.log.info({ evt: "auth_register_success", email: user.email, sid: issued.session.sid });
+    return ok(reply, {
+      ...tokenResponse(issued),
+      profile: {
+        plan_name: subscribe.plan?.name ?? null,
+        expired_at: subscribe.expired_at ?? null,
+      },
+    });
+  });
+
   app.post("/api/app/v1/auth/bind/start", async (request, reply) => {
     const body = (request.body ?? {}) as Record<string, unknown>;
     const deviceId = String(body.device_id ?? "").trim();
@@ -186,11 +317,19 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
       appVersion,
       ttlSeconds: config.bindTtlSeconds,
     });
+    request.log.info({
+      evt: "bind_start",
+      bind_id: rec.bindId,
+      device_id: rec.deviceId,
+      platform: rec.platform,
+      app_version: rec.appVersion,
+    });
 
     const approveUrl = `${config.publicBaseUrl}/api/app/v1/auth/bind/confirm?bind_id=${encodeURIComponent(rec.bindId)}`;
 
     return ok(reply, {
       bind_id: rec.bindId,
+      bind_device_id: rec.deviceId,
       expires_at: new Date(rec.expiresAt).toISOString(),
       approve_url: approveUrl,
       deep_link: `slothvpn://auth/callback?bind_id=${encodeURIComponent(rec.bindId)}`,
@@ -206,6 +345,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
     const bind = deps.binds.get(bindId);
     if (!bind) throw new AppError(404, ErrorCodes.NOT_FOUND, "Bind session not found");
     if (bind.expiresAt <= Date.now()) throw new AppError(400, ErrorCodes.BIND_EXPIRED, "Bind session expired");
+    request.log.info({ evt: "bind_confirm_page", bind_id: bind.bindId, bind_device_id: bind.deviceId });
 
     reply.header("content-type", "text/html; charset=utf-8");
     return reply.send(bindConfirmPage(bind.bindId));
@@ -248,11 +388,13 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
 
     deps.binds.approve(bind.bindId, exchangeToken);
 
-    const callbackUrl = authDeepLink(bind.bindId, exchangeToken);
-    const callbackPageUrl = authCallbackPageUrl(bind.bindId, exchangeToken);
+    const callbackUrl = authDeepLink(bind.bindId, exchangeToken, bind.deviceId);
+    const callbackPageUrl = authCallbackPageUrl(bind.bindId, exchangeToken, bind.deviceId);
+    request.log.info({ evt: "bind_confirm_success", bind_id: bind.bindId, bind_device_id: bind.deviceId, user_email: user.email });
 
     return ok(reply, {
       bind_id: bind.bindId,
+      bind_device_id: bind.deviceId,
       exchange_token: exchangeToken,
       callback_url: callbackUrl,
       callback_page_url: callbackPageUrl,
@@ -268,12 +410,13 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
     const query = request.query as Record<string, unknown>;
     const bindId = String(query.bind_id ?? "").trim();
     const exchangeToken = String(query.exchange_token ?? "").trim();
+    const deviceId = String(query.device_id ?? "").trim();
 
     if (!bindId || !exchangeToken) {
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "bind_id and exchange_token are required");
     }
 
-    const deepLink = authDeepLink(bindId, exchangeToken);
+    const deepLink = authDeepLink(bindId, exchangeToken, deviceId || undefined);
     reply.header("content-type", "text/html; charset=utf-8");
     return reply.send(authCallbackPage(deepLink, bindId));
   });
@@ -292,12 +435,25 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
     if (!bind) throw new AppError(404, ErrorCodes.NOT_FOUND, "Bind session not found");
     if (bind.expiresAt <= Date.now()) throw new AppError(400, ErrorCodes.BIND_EXPIRED, "Bind session expired");
     if (bind.status === "consumed") throw new AppError(409, ErrorCodes.BIND_ALREADY_USED, "Bind session already used");
+    request.log.info({
+      evt: "bind_exchange_attempt",
+      bind_id: bindId,
+      expected_device_id: bind.deviceId,
+      incoming_device_id: deviceId,
+    });
 
     const payload = verifyBindExchangeToken(exchangeToken);
     if (payload.bind_id !== bind.bindId) {
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "bind_id does not match exchange token");
     }
     if (payload.device_id !== bind.deviceId || bind.deviceId !== deviceId) {
+      request.log.warn({
+        evt: "bind_exchange_device_mismatch",
+        bind_id: bindId,
+        expected_device_id: bind.deviceId,
+        token_device_id: payload.device_id,
+        incoming_device_id: deviceId,
+      });
       throw new AppError(403, ErrorCodes.FORBIDDEN, "device_id does not match bind session");
     }
 
@@ -305,7 +461,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
       throw new AppError(409, ErrorCodes.BIND_NOT_APPROVED, "Bind session is not approved yet");
     }
 
-    const session = deps.sessions.create({
+    const issued = issueSessionTokenSet(deps, {
       xboardAuthData: payload.xboard_auth_data,
       xboardToken: payload.xboard_token,
       userEmail: payload.user_email,
@@ -313,23 +469,9 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
     });
 
     deps.binds.consume(bind.bindId);
+    request.log.info({ evt: "bind_exchange_success", bind_id: bind.bindId, device_id: deviceId, sid: issued.session.sid });
 
-    const accessToken = signAccessToken(session.sid);
-    const refreshToken = signRefreshToken(session.sid);
-    const pullToken = signPullToken(session.sid);
-
-    return ok(reply, {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      token_type: "Bearer",
-      expires_in: config.accessTokenExpires,
-      session_id: session.sid,
-      subscription_pull_token: pullToken,
-      user: {
-        email: session.userEmail ?? null,
-        uuid: session.userUuid ?? null,
-      },
-    });
+    return ok(reply, tokenResponse(issued));
   });
 };
 

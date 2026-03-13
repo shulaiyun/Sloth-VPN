@@ -41,6 +41,9 @@ export const registerSubscriptionRoutes = (app: FastifyInstance, deps: Subscript
 
   app.post("/api/app/v1/subscription/sync", async (request, reply) => {
     const session = requireSession(request, deps.sessions);
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const force = body.force === true;
+    request.log.info({ evt: "subscription_sync", sid: session.sid, force });
 
     const subscribe = await deps.xboard.getSubscribe(session.xboardAuthData);
     const pulled = await deps.xboard.fetchSubscriptionContent(subscribe.subscribe_url);
