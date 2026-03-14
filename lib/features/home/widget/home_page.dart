@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+﻿import 'package:dartx/dartx.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -134,6 +134,12 @@ class HomePage extends HookConsumerWidget {
                     ),
                     _ => const SliverToBoxAdapter(),
                   },
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      child: _GatewaySubscriptionHint(refreshSignal: gatewayRefreshTick),
+                    ),
+                  ),
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
@@ -342,25 +348,27 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
   }
 
   Future<void> _refresh() async {
-    final portal = ref.read(slothGatewayPortalControllerProvider);
-    final loggedIn = await portal.isLoggedIn();
-    GatewayAccountSummary? summary;
-    if (loggedIn) {
-      summary = await portal.fetchAccountSummary();
+    try {
+      final portal = ref.read(slothGatewayPortalControllerProvider);
+      final loggedIn = await portal.isLoggedIn();
+      GatewayAccountSummary? summary;
+      if (loggedIn) {
+        summary = await portal.fetchAccountSummary();
+      }
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = loggedIn;
+        _summary = summary;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = false;
+        _summary = null;
+        _loading = false;
+      });
     }
-    if (!mounted) return;
-    setState(() {
-      _loggedIn = loggedIn;
-      _summary = summary;
-      _loading = false;
-    });
-  }
-
-  String _formatTraffic(int bytes) {
-    const gb = 1024 * 1024 * 1024;
-    const mb = 1024 * 1024;
-    if (bytes >= gb) return "${(bytes / gb).toStringAsFixed(2)} GB";
-    return "${(bytes / mb).toStringAsFixed(2)} MB";
   }
 
   Future<void> _syncNow() async {
@@ -422,11 +430,6 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 runSpacing: 8,
                 children: [
                   _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
-                  _MiniStatusTile(label: g.homeExpireAt, value: _summary?.expiredAt ?? "--"),
-                  _MiniStatusTile(
-                    label: g.homeRemainingTraffic,
-                    value: _formatTraffic(_summary?.trafficRemaining ?? 0),
-                  ),
                 ],
               ),
             ] else ...[
@@ -454,6 +457,105 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GatewaySubscriptionHint extends ConsumerStatefulWidget {
+  const _GatewaySubscriptionHint({required this.refreshSignal});
+
+  final int refreshSignal;
+
+  @override
+  ConsumerState<_GatewaySubscriptionHint> createState() => _GatewaySubscriptionHintState();
+}
+
+class _GatewaySubscriptionHintState extends ConsumerState<_GatewaySubscriptionHint> {
+  GatewayAccountSummary? _summary;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GatewaySubscriptionHint oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshSignal != widget.refreshSignal) {
+      _refresh();
+    }
+  }
+
+  String _formatTraffic(int bytes) {
+    const gb = 1024 * 1024 * 1024;
+    const mb = 1024 * 1024;
+    if (bytes >= gb) return "${(bytes / gb).toStringAsFixed(2)} GB";
+    return "${(bytes / mb).toStringAsFixed(2)} MB";
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _loading = true);
+    try {
+      final portal = ref.read(slothGatewayPortalControllerProvider);
+      final loggedIn = await portal.isLoggedIn();
+      if (!loggedIn) {
+        if (!mounted) return;
+        setState(() {
+          _summary = null;
+          _loading = false;
+        });
+        return;
+      }
+      final summary = await portal.fetchAccountSummary();
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _summary = null;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final g = GatewayL10n.of(context);
+    final theme = Theme.of(context);
+    if (_loading || _summary == null) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surfaceContainerLow,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              "${g.homeExpireAt}: ${_summary?.expiredAt ?? '--'}",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const Gap(10),
+          Expanded(
+            child: Text(
+              "${g.homeRemainingTraffic}: ${_formatTraffic(_summary?.trafficRemaining ?? 0)}",
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

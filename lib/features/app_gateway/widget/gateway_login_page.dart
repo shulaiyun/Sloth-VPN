@@ -32,9 +32,9 @@ class GatewayLoginPage extends HookConsumerWidget {
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginFailed(error.message))));
-      } catch (error) {
+      } catch (_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginFailed(error.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginFailed(g.unknownError))));
       } finally {
         isLoading.value = false;
       }

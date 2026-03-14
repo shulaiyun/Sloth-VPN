@@ -1,4 +1,4 @@
-import 'package:hiddify/core/app_info/app_info_provider.dart';
+﻿import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_session_store.dart';
@@ -171,5 +171,55 @@ class SlothGatewayPortalController with AppLogger {
       throw GatewayApiException(message: "请先登录后再查看订单");
     }
     return _api.orderStatus(accessToken: token!, orderNo: orderNo);
+  }
+
+  Future<GatewayOrderItem?> orderDetail(String orderNo) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再查看订单");
+    }
+    return _api.orderDetail(accessToken: token!, orderNo: orderNo);
+  }
+
+  Future<bool> cancelOrder(String orderNo) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再管理订单");
+    }
+    return _api.cancelOrder(accessToken: token!, orderNo: orderNo);
+  }
+
+  Future<List<GatewayNoticeItem>> fetchNotices({int current = 1, int pageSize = 10}) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) return const [];
+    return _api.notices(token!, current: current, pageSize: pageSize);
+  }
+
+  Future<List<GatewayKnowledgeItem>> fetchKnowledge({String? language, String? keyword}) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) return const [];
+    return _api.knowledge(token!, language: language, keyword: keyword);
+  }
+
+  Future<GatewayKnowledgeItem?> fetchKnowledgeDetail(int id) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) return null;
+    return _api.knowledgeDetail(token!, id);
+  }
+
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再修改密码");
+    }
+    await _api.changePassword(accessToken: token!, oldPassword: oldPassword, newPassword: newPassword);
+  }
+
+  Future<GatewayTicketEntry> fetchTicketEntry() async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再打开工单");
+    }
+    return _api.ticketEntry(token!);
   }
 }

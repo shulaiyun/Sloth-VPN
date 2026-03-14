@@ -57,6 +57,11 @@ type XboardGuestConfig = {
   email_suffix?: unknown;
 };
 
+type XboardNoticePayload = {
+  data?: unknown;
+  total?: unknown;
+};
+
 export class XboardAdapter {
   constructor(private readonly baseUrl: string, private readonly timeoutMs: number) {}
 
@@ -193,6 +198,24 @@ export class XboardAdapter {
     return [];
   }
 
+  async getOrderDetail(authData: string, orderNo: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(
+      "GET",
+      `/api/v1/user/order/detail?trade_no=${encodeURIComponent(orderNo)}`,
+      undefined,
+      authData,
+    );
+  }
+
+  async cancelOrder(authData: string, orderNo: string): Promise<boolean> {
+    return this.request<boolean>(
+      "POST",
+      "/api/v1/user/order/cancel",
+      { trade_no: orderNo },
+      authData,
+    );
+  }
+
   async getInviteSummary(authData: string): Promise<{
     inviteCode: string | null;
     inviteUrl: string | null;
@@ -229,6 +252,83 @@ export class XboardAdapter {
       ),
       invitedCount: this.toNumber(this.pick(raw, ["invited_count", "invite_count", "user_count"])),
     };
+  }
+
+  async getNotices(authData: string, current = 1, pageSize = 10): Promise<{
+    items: Array<Record<string, unknown>>;
+    total: number;
+  }> {
+    const payload = await this.requestUnwrapped<XboardNoticePayload>(
+      "GET",
+      `/api/v1/user/notice/fetch?current=${encodeURIComponent(String(current))}&page_size=${encodeURIComponent(
+        String(pageSize),
+      )}`,
+      undefined,
+      authData,
+    );
+
+    const list = Array.isArray(payload.data)
+      ? payload.data.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      : [];
+    return {
+      items: list,
+      total: this.toNumber(payload.total),
+    };
+  }
+
+  async getKnowledgeList(
+    authData: string,
+    input?: { language?: string; keyword?: string },
+  ): Promise<Record<string, Array<Record<string, unknown>>>> {
+    const query = new URLSearchParams();
+    if (input?.language) query.set("language", input.language);
+    if (input?.keyword) query.set("keyword", input.keyword);
+    const suffix = query.toString();
+    const data = await this.request<unknown>(
+      "GET",
+      `/api/v1/user/knowledge/fetch${suffix ? `?${suffix}` : ""}`,
+      undefined,
+      authData,
+    );
+
+    if (!data || typeof data !== "object") return {};
+    const source = data as Record<string, unknown>;
+    const normalized: Record<string, Array<Record<string, unknown>>> = {};
+    for (const [category, value] of Object.entries(source)) {
+      if (!Array.isArray(value)) continue;
+      normalized[category] = value.filter(
+        (item): item is Record<string, unknown> => typeof item === "object" && item !== null,
+      );
+    }
+    return normalized;
+  }
+
+  async getKnowledgeDetail(authData: string, id: number): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(
+      "GET",
+      `/api/v1/user/knowledge/fetch?id=${encodeURIComponent(String(id))}`,
+      undefined,
+      authData,
+    );
+  }
+
+  async changePassword(authData: string, oldPassword: string, newPassword: string): Promise<boolean> {
+    return this.request<boolean>(
+      "POST",
+      "/api/v1/user/changePassword",
+      { old_password: oldPassword, new_password: newPassword },
+      authData,
+    );
+  }
+
+  async getQuickLoginUrl(authData: string, redirect = "ticket"): Promise<string> {
+    const url = await this.request<string>(
+      "POST",
+      "/api/v1/user/getQuickLoginUrl",
+      { redirect },
+      authData,
+    );
+    return typeof url === "string" ? url : "";
   }
 
   async createOrder(input: {

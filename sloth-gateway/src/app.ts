@@ -11,6 +11,8 @@ import { registerSubscriptionRoutes } from "./routes/subscription";
 import { registerOrderRoutes } from "./routes/orders";
 import { registerPaymentRoutes } from "./routes/payment";
 import { registerPlanRoutes } from "./routes/plans";
+import { registerAccountRoutes } from "./routes/account";
+import { registerContentRoutes } from "./routes/content";
 
 export const buildApp = () => {
   const app = Fastify({
@@ -48,6 +50,8 @@ export const buildApp = () => {
   registerSubscriptionRoutes(app, { sessions, xboard });
   registerPlanRoutes(app, { sessions, xboard });
   registerOrderRoutes(app, { sessions, xboard });
+  registerAccountRoutes(app, { sessions, xboard, xboardWebBaseUrl: config.xboardWebBaseUrl });
+  registerContentRoutes(app, { sessions, xboard });
   registerPaymentRoutes(app);
 
   app.setNotFoundHandler((request, reply) => {

@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import 'package:hiddify/core/model/constants.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
@@ -57,7 +57,16 @@ class SlothGatewayApi with InfraLogger {
 
   String _friendlyMessage({required String raw, String? code, int? statusCode}) {
     final message = raw.trim();
+    final lowerRaw = message.toLowerCase();
+    final looksHtml = lowerRaw.contains("<html") || lowerRaw.contains("<!doctype") || lowerRaw.contains("<body");
+    final statusMatch = RegExp(r"status code of (\d{3})").firstMatch(lowerRaw);
+    final inferredStatus = statusMatch == null ? null : int.tryParse(statusMatch.group(1)!);
+    final finalStatus = statusCode ?? inferredStatus;
     if (message.isEmpty) return "请求失败，请稍后重试";
+    if (looksHtml) {
+      if (finalStatus != null && finalStatus >= 500) return "网关服务暂时不可用，请稍后重试";
+      return "请求失败，请稍后重试";
+    }
     if (_hasChinese.hasMatch(message)) return message;
 
     switch (code) {
@@ -73,10 +82,14 @@ class SlothGatewayApi with InfraLogger {
         return "当前站点要求邮箱验证码";
       case "EMAIL_CODE_INVALID":
         return "邮箱验证码错误或已过期";
+      case "CAPTCHA_REQUIRED":
+        return "当前站点开启人机验证，请先在网页端完成验证";
       case "INVITE_CODE_REQUIRED":
         return "当前站点要求填写邀请码";
       case "UNAUTHORIZED":
         return "登录状态已失效，请重新登录";
+      case "ORDER_NOT_CANCELLABLE":
+        return "当前订单状态不可取消";
       default:
         break;
     }
@@ -90,9 +103,11 @@ class SlothGatewayApi with InfraLogger {
     }
     if (lower.contains("timeout")) return "请求超时，请稍后重试";
     if (lower.contains("network") || lower.contains("socket")) return "网络异常，请检查网络后重试";
-    if (statusCode == 401) return "登录状态已失效，请重新登录";
-    if (statusCode == 403) return "当前请求被拒绝，请检查账号权限";
-    if (statusCode == 404) return "请求接口不存在，请更新网关服务";
+    if (finalStatus == 401) return "登录状态已失效，请重新登录";
+    if (finalStatus == 403) return "当前请求被拒绝，请检查账号权限";
+    if (finalStatus == 404) return "请求接口不存在，请更新网关服务";
+    if (finalStatus == 422) return "请求参数不正确，请检查输入信息";
+    if (finalStatus != null && finalStatus >= 500) return "网关服务暂时不可用，请稍后重试";
 
     return message;
   }
@@ -212,6 +227,23 @@ class SlothGatewayApi with InfraLogger {
     return GatewayOrderStatusResult.fromMap(data);
   }
 
+  Future<GatewayOrderItem?> orderDetail({required String accessToken, required String orderNo}) async {
+    final data = await _request(method: "GET", path: "/api/app/v1/orders/$orderNo/detail", accessToken: accessToken);
+    final raw = data["order"];
+    if (raw is! Map) return null;
+    return GatewayOrderItem.fromMap(raw.cast<String, dynamic>());
+  }
+
+  Future<bool> cancelOrder({required String accessToken, required String orderNo}) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/orders/$orderNo/cancel",
+      accessToken: accessToken,
+      body: const <String, dynamic>{},
+    );
+    return data["cancelled"] == true;
+  }
+
   Future<List<GatewayOrderItem>> orders(String accessToken, {String? status}) async {
     final query = status == null || status.trim().isEmpty ? "" : "?status=${Uri.encodeQueryComponent(status)}";
     final data = await _request(method: "GET", path: "/api/app/v1/orders$query", accessToken: accessToken);
@@ -270,6 +302,62 @@ class SlothGatewayApi with InfraLogger {
     return GatewayOrderPaymentResult.fromMap(data);
   }
 
+  Future<List<GatewayNoticeItem>> notices(String accessToken, {int current = 1, int pageSize = 10}) async {
+    final data = await _request(
+      method: "GET",
+      path: "/api/app/v1/content/notices?current=$current&page_size=$pageSize",
+      accessToken: accessToken,
+    );
+    final raw = data["items"];
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((item) => GatewayNoticeItem.fromMap(item.cast<String, dynamic>())).toList();
+  }
+
+  Future<List<GatewayKnowledgeItem>> knowledge(String accessToken, {String? language, String? keyword}) async {
+    final query = <String>[
+      if (language != null && language.trim().isNotEmpty) "language=${Uri.encodeQueryComponent(language.trim())}",
+      if (keyword != null && keyword.trim().isNotEmpty) "keyword=${Uri.encodeQueryComponent(keyword.trim())}",
+    ].join("&");
+    final data = await _request(
+      method: "GET",
+      path: "/api/app/v1/content/knowledge${query.isEmpty ? "" : "?$query"}",
+      accessToken: accessToken,
+    );
+    final raw = data["items"];
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((item) => GatewayKnowledgeItem.fromMap(item.cast<String, dynamic>())).toList();
+  }
+
+  Future<GatewayKnowledgeItem?> knowledgeDetail(String accessToken, int id) async {
+    final data = await _request(method: "GET", path: "/api/app/v1/content/knowledge/$id", accessToken: accessToken);
+    final raw = data["item"];
+    if (raw is! Map) return null;
+    return GatewayKnowledgeItem.fromMap(raw.cast<String, dynamic>());
+  }
+
+  Future<bool> changePassword({
+    required String accessToken,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/account/change-password",
+      accessToken: accessToken,
+      body: {"old_password": oldPassword, "new_password": newPassword},
+    );
+    return data["changed"] == true;
+  }
+
+  Future<GatewayTicketEntry> ticketEntry(String accessToken) async {
+    final data = await _request(
+      method: "GET",
+      path: "/api/app/v1/support/ticket-entry?redirect=ticket",
+      accessToken: accessToken,
+    );
+    return GatewayTicketEntry.fromMap(data);
+  }
+
   Future<Map<String, dynamic>> _request({
     required String method,
     required String path,
@@ -306,7 +394,7 @@ class SlothGatewayApi with InfraLogger {
       final data = error.response?.data;
       if (data is Map || data is String) {
         final mapped = _asStringKeyedMap(data);
-        final err = _normalizeError(mapped["error"], mapped);
+        final err = _normalizeError(data is String ? data : mapped["error"], mapped);
         final code = err["code"]?.toString();
         final rawMessage =
             err["message"]?.toString() ?? mapped["message"]?.toString() ?? error.message ?? "Gateway request failed";

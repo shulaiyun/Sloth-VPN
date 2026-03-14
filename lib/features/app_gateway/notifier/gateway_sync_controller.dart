@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
@@ -72,7 +72,7 @@ class SlothGatewaySyncController with AppLogger {
         await store.saveLastBind(bindId: bindId, deviceId: deviceId);
       }
       if (_isBlank(approveUrl)) {
-        _showError("Bind URL is missing");
+        _showError("绑定链接缺失，请稍后重试");
         return;
       }
       loggy.info("gateway bind/start success, bind_id=[$bindId], approve_url=[$approveUrl]");
@@ -159,7 +159,7 @@ class SlothGatewaySyncController with AppLogger {
       final store = await _sessionStore();
       final accessToken = store.readAccessToken();
       if (_isBlank(accessToken)) {
-        _showError('支付回调已收到，但未检测到登录态');
+        _showError('支付回调已收到，但未检测到登录状态');
         return;
       }
 
@@ -201,12 +201,12 @@ class SlothGatewaySyncController with AppLogger {
     } on DioException catch (error, stackTrace) {
       loggy.warning('gateway sync request failed, reason=[$reason]', error, stackTrace);
       if (reason != 'startup') {
-        _showError('Gateway sync failed during $reason.');
+        _showError('订阅同步失败，请稍后重试');
       }
     } catch (error, stackTrace) {
       loggy.warning('gateway sync failed, reason=[$reason]', error, stackTrace);
       if (reason != 'startup') {
-        _showError('Gateway sync failed during $reason.');
+        _showError('订阅同步失败，请稍后重试');
       }
     } finally {
       _syncing?.complete();

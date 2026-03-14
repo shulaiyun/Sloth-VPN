@@ -17,14 +17,30 @@ type AuthRouteDeps = {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const extractErrorText = (error: AppError): string => {
-  const detailsText = (() => {
+  const stringify = (value: unknown): string => {
+    if (value == null) return "";
+    if (typeof value === "string") return value;
     try {
-      return JSON.stringify(error.details ?? {});
+      return JSON.stringify(value);
     } catch {
       return "";
     }
-  })();
-  return `${error.message} ${detailsText}`.toLowerCase();
+  };
+  const details = error.details as Record<string, unknown> | undefined;
+  const upstreamError = details?.upstream_error;
+  const upstreamMessage =
+    upstreamError && typeof upstreamError === "object"
+      ? (upstreamError as Record<string, unknown>).message
+      : undefined;
+  return `${error.message} ${stringify(error.details)} ${stringify(upstreamError)} ${stringify(upstreamMessage)}`.toLowerCase();
+};
+
+const readUpstreamStatus = (error: AppError): number => {
+  const details = error.details as Record<string, unknown> | undefined;
+  const raw = details?.upstream_status;
+  if (typeof raw === "number") return raw;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const mapUpstreamAuthError = (error: unknown): never => {
@@ -36,6 +52,18 @@ const mapUpstreamAuthError = (error: unknown): never => {
   }
 
   const text = extractErrorText(error);
+  const upstreamStatus = readUpstreamStatus(error);
+  if (upstreamStatus === 422) {
+    if (text.includes("邮箱格式") || text.includes("email format") || text.includes("invalid email")) {
+      throw new AppError(400, ErrorCodes.BAD_EMAIL_FORMAT, "邮箱格式不正确，请检查邮箱是否正确");
+    }
+    if (text.includes("invite")) {
+      throw new AppError(400, ErrorCodes.INVITE_CODE_REQUIRED, "当前站点要求填写邀请码");
+    }
+    if (text.includes("verify") || text.includes("验证码")) {
+      throw new AppError(400, ErrorCodes.EMAIL_CODE_INVALID, "邮箱验证码错误或已过期");
+    }
+  }
   if (text.includes("register") && (text.includes("closed") || text.includes("disable"))) {
     throw new AppError(403, ErrorCodes.REGISTER_CLOSED, "当前站点已关闭注册");
   }
@@ -59,6 +87,15 @@ const mapUpstreamAuthError = (error: unknown): never => {
     (text.includes("allow") || text.includes("invalid") || text.includes("limit") || text.includes("not"))
   ) {
     throw new AppError(400, ErrorCodes.EMAIL_SUFFIX_NOT_ALLOWED, "仅支持指定邮箱后缀注册");
+  }
+  if (
+    text.includes("captcha") ||
+    text.includes("recaptcha") ||
+    text.includes("turnstile") ||
+    text.includes("hcaptcha") ||
+    text.includes("人机验证")
+  ) {
+    throw new AppError(400, ErrorCodes.CAPTCHA_REQUIRED, "当前站点开启人机验证，请在网页端完成验证码后再注册");
   }
   if (
     text.includes("invalid email") ||
@@ -86,6 +123,13 @@ const normalizeEmailSuffixes = (suffixes: string[]): string[] =>
     .map((item) => item.trim().toLowerCase())
     .filter((item) => item.length > 0)
     .map((item) => (item.startsWith("@") ? item : `@${item}`));
+
+const normalizeEmail = (value: string): string =>
+  value
+    .trim()
+    .replace(/\u3000/g, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
 
 const ensureEmailValidAndAllowed = (email: string, allowedSuffixes: string[]) => {
   if (!EMAIL_REGEX.test(email)) {
@@ -327,7 +371,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
 
   app.post("/api/app/v1/auth/send-email-verify", async (request, reply) => {
     const body = (request.body ?? {}) as Record<string, unknown>;
-    const email = String(body.email ?? "").trim();
+    const email = normalizeEmail(String(body.email ?? ""));
     if (!email) {
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email is required");
     }
@@ -355,7 +399,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
 
   app.post("/api/app/v1/auth/login", async (request, reply) => {
     const body = (request.body ?? {}) as Record<string, unknown>;
-    const email = String(body.email ?? "").trim();
+    const email = normalizeEmail(String(body.email ?? ""));
     const password = String(body.password ?? "").trim();
     if (!email || !password) {
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email and password are required");
@@ -388,7 +432,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
 
   app.post("/api/app/v1/auth/register", async (request, reply) => {
     const body = (request.body ?? {}) as Record<string, unknown>;
-    const email = String(body.email ?? "").trim();
+    const email = normalizeEmail(String(body.email ?? ""));
     const password = String(body.password ?? "").trim();
     if (!email || !password) {
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email and password are required");

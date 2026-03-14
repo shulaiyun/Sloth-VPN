@@ -138,6 +138,15 @@ class GatewayOrderItem {
     this.period,
     this.createdAt,
     this.updatedAt,
+    this.paidAt,
+    this.balanceAmount = 0,
+    this.discountAmount = 0,
+    this.surplusAmount = 0,
+    this.refundAmount = 0,
+    this.handlingAmount = 0,
+    this.type = "unknown",
+    this.typeLabel = "",
+    this.canCancel = false,
   });
 
   final String orderNo;
@@ -150,6 +159,15 @@ class GatewayOrderItem {
   final String? period;
   final String? createdAt;
   final String? updatedAt;
+  final String? paidAt;
+  final int balanceAmount;
+  final int discountAmount;
+  final int surplusAmount;
+  final int refundAmount;
+  final int handlingAmount;
+  final String type;
+  final String typeLabel;
+  final bool canCancel;
 
   bool get isPaid => status == "completed" || status == "discounted";
   bool get isPayable => status == "pending" || status == "processing";
@@ -166,6 +184,15 @@ class GatewayOrderItem {
       period: _asNullableString(map["period"]),
       createdAt: _asNullableString(map["created_at"]),
       updatedAt: _asNullableString(map["updated_at"]),
+      paidAt: _asNullableString(map["paid_at"]),
+      balanceAmount: _asInt(map["balance_amount"]),
+      discountAmount: _asInt(map["discount_amount"]),
+      surplusAmount: _asInt(map["surplus_amount"]),
+      refundAmount: _asInt(map["refund_amount"]),
+      handlingAmount: _asInt(map["handling_amount"]),
+      type: _asNullableString(map["type"]) ?? "unknown",
+      typeLabel: _asNullableString(map["type_label"]) ?? "",
+      canCancel: map["can_cancel"] == true,
     );
   }
 }
@@ -285,6 +312,8 @@ class GatewayPlan {
     required this.transferEnable,
     this.speedLimit,
     this.deviceLimit,
+    this.renewable = true,
+    this.sell = true,
     required this.tags,
     required this.periods,
   });
@@ -295,6 +324,8 @@ class GatewayPlan {
   final int transferEnable;
   final int? speedLimit;
   final int? deviceLimit;
+  final bool renewable;
+  final bool sell;
   final List<String> tags;
   final List<GatewayPlanPeriod> periods;
 
@@ -310,6 +341,8 @@ class GatewayPlan {
       transferEnable: _asInt(map["transfer_enable"]),
       speedLimit: map["speed_limit"] == null ? null : _asInt(map["speed_limit"]),
       deviceLimit: map["device_limit"] == null ? null : _asInt(map["device_limit"]),
+      renewable: map["renewable"] != false,
+      sell: map["sell"] != false,
       tags: switch (map["tags"]) {
         final List list => list.map((e) => e.toString()).toList(),
         _ => const [],
@@ -370,5 +403,71 @@ class GatewayOrderPaymentResult {
     paymentUrl: _asNullableString(map["payment_url"]),
     completed: map["completed"] == true,
     status: map["status"]?.toString() ?? "pending",
+  );
+}
+
+class GatewayNoticeItem {
+  GatewayNoticeItem({
+    required this.id,
+    required this.title,
+    required this.content,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  final int id;
+  final String title;
+  final String content;
+  final String? createdAt;
+  final String? updatedAt;
+
+  factory GatewayNoticeItem.fromMap(Map<String, dynamic> map) => GatewayNoticeItem(
+    id: _asInt(map["id"]),
+    title: _asNullableString(map["title"]) ?? "",
+    content: _asNullableString(map["content"]) ?? "",
+    createdAt: _asNullableString(map["created_at"]),
+    updatedAt: _asNullableString(map["updated_at"]),
+  );
+}
+
+class GatewayKnowledgeItem {
+  GatewayKnowledgeItem({
+    required this.id,
+    required this.category,
+    required this.title,
+    required this.body,
+    this.updatedAt,
+  });
+
+  final int id;
+  final String category;
+  final String title;
+  final String body;
+  final String? updatedAt;
+
+  factory GatewayKnowledgeItem.fromMap(Map<String, dynamic> map) => GatewayKnowledgeItem(
+    id: _asInt(map["id"]),
+    category: _asNullableString(map["category"]) ?? "general",
+    title: _asNullableString(map["title"]) ?? "",
+    body: _asNullableString(map["body"]) ?? "",
+    updatedAt: _asNullableString(map["updated_at"]),
+  );
+}
+
+class GatewayTicketEntry {
+  GatewayTicketEntry({
+    required this.url,
+    required this.quickLogin,
+    this.fallbackUrl,
+  });
+
+  final String url;
+  final bool quickLogin;
+  final String? fallbackUrl;
+
+  factory GatewayTicketEntry.fromMap(Map<String, dynamic> map) => GatewayTicketEntry(
+    url: map["url"]?.toString() ?? "",
+    quickLogin: map["quick_login"] == true,
+    fallbackUrl: _asNullableString(map["fallback_url"]),
   );
 }

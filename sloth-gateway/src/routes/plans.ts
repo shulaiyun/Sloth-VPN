@@ -55,6 +55,8 @@ export const registerPlanRoutes = (app: FastifyInstance, deps: PlanDeps): void =
           transfer_enable: Number(plan.transfer_enable ?? 0),
           speed_limit: plan.speed_limit == null ? null : Number(plan.speed_limit),
           device_limit: plan.device_limit == null ? null : Number(plan.device_limit),
+          renewable: plan.renew == null ? true : plan.renew === true || String(plan.renew) === "1",
+          sell: plan.sell == null ? true : plan.sell === true || String(plan.sell) === "1",
           tags,
           periods,
         };

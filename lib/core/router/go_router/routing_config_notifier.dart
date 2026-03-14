@@ -7,10 +7,14 @@ import 'package:hiddify/core/router/go_router/helper/active_breakpoint_notifier.
 import 'package:hiddify/core/router/go_router/helper/custom_transition.dart';
 import 'package:hiddify/core/router/go_router/refresh_listenable.dart';
 import 'package:hiddify/features/about/widget/about_page.dart';
+import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/features/app_gateway/widget/gateway_account_page.dart';
+import 'package:hiddify/features/app_gateway/widget/gateway_change_password_page.dart';
+import 'package:hiddify/features/app_gateway/widget/gateway_content_pages.dart';
 import 'package:hiddify/features/app_gateway/widget/gateway_login_page.dart';
 import 'package:hiddify/features/app_gateway/widget/gateway_plans_page.dart';
 import 'package:hiddify/features/app_gateway/widget/gateway_register_page.dart';
+import 'package:hiddify/features/app_gateway/widget/gateway_webview_page.dart';
 import 'package:hiddify/features/home/widget/home_page.dart';
 import 'package:hiddify/features/intro/widget/intro_page.dart';
 import 'package:hiddify/features/log/overview/logs_page.dart';
@@ -184,6 +188,58 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
                       path: 'invite',
                       pageBuilder: (_, state) =>
                           customTransition(TransitionType.slide, state.pageKey, const GatewayInvitePage()),
+                    ),
+                    GoRoute(
+                      name: 'gatewayChangePassword',
+                      path: 'change-password',
+                      pageBuilder: (_, state) =>
+                          customTransition(TransitionType.slide, state.pageKey, const GatewayChangePasswordPage()),
+                    ),
+                    GoRoute(
+                      name: 'gatewayNotices',
+                      path: 'notices',
+                      pageBuilder: (_, state) =>
+                          customTransition(TransitionType.slide, state.pageKey, const GatewayNoticesPage()),
+                    ),
+                    GoRoute(
+                      name: 'gatewayKnowledge',
+                      path: 'knowledge',
+                      pageBuilder: (_, state) =>
+                          customTransition(TransitionType.slide, state.pageKey, const GatewayKnowledgePage()),
+                    ),
+                    GoRoute(
+                      name: 'gatewayKnowledgeDetail',
+                      path: 'knowledge-detail',
+                      pageBuilder: (_, state) {
+                        final extra = state.extra;
+                        if (extra is GatewayKnowledgeItem) {
+                          return customTransition(
+                            TransitionType.slide,
+                            state.pageKey,
+                            GatewayKnowledgeDetailPage(item: extra),
+                          );
+                        }
+                        return customTransition(
+                          TransitionType.slide,
+                          state.pageKey,
+                          const GatewayKnowledgePage(),
+                        );
+                      },
+                    ),
+                    GoRoute(
+                      name: 'gatewayWebView',
+                      path: 'webview',
+                      pageBuilder: (_, state) {
+                        final extra = state.extra;
+                        final map = extra is Map ? extra : const <String, String>{};
+                        final url = map['url']?.toString() ?? '';
+                        final title = map['title']?.toString() ?? 'WebView';
+                        return customTransition(
+                          TransitionType.slide,
+                          state.pageKey,
+                          GatewayWebViewPage(url: url, title: title),
+                        );
+                      },
                     ),
                   ],
                 ),

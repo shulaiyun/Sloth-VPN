@@ -27,12 +27,29 @@ const buildAccountSummary = async (
   const ticketUrl = config.defaultTicketUrl || `${config.xboardWebBaseUrl}/#/ticket`;
   const noticeUrl = config.defaultNoticeUrl || `${config.xboardWebBaseUrl}/#/notice`;
 
+  const toIsoTime = (value: unknown): string | null => {
+    if (value == null) return null;
+    if (typeof value === "number") {
+      const ts = value > 9_999_999_999 ? value : value * 1000;
+      return new Date(ts).toISOString();
+    }
+    const text = String(value).trim();
+    if (!text) return null;
+    const parsed = Number(text);
+    if (Number.isFinite(parsed)) {
+      const ts = parsed > 9_999_999_999 ? parsed : parsed * 1000;
+      return new Date(ts).toISOString();
+    }
+    const date = new Date(text);
+    return Number.isNaN(date.getTime()) ? text : date.toISOString();
+  };
+
   return {
     user: {
       id: subscribe.uuid,
       email: user.email,
       plan_name: subscribe.plan?.name ?? null,
-      expired_at: subscribe.expired_at ?? null,
+      expired_at: toIsoTime(subscribe.expired_at),
       traffic_used: (subscribe.u ?? 0) + (subscribe.d ?? 0),
       traffic_total: subscribe.transfer_enable ?? user.transfer_enable ?? 0,
       balance: user.balance ?? 0,

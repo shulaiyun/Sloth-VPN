@@ -67,9 +67,9 @@ class GatewayRegisterPage extends HookConsumerWidget {
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.sendFailed(error.message))));
-      } catch (error) {
+      } catch (_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.sendFailed(error.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.sendFailed(g.unknownError))));
       } finally {
         isSendingCode.value = false;
       }
@@ -115,9 +115,9 @@ class GatewayRegisterPage extends HookConsumerWidget {
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerFailed(error.message))));
-      } catch (error) {
+      } catch (_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerFailed(error.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerFailed(g.unknownError))));
       } finally {
         isLoading.value = false;
       }
