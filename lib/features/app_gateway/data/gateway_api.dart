@@ -1,17 +1,10 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:hiddify/core/model/constants.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
 
 class GatewayApiException implements Exception {
-  GatewayApiException({
-    required this.message,
-    this.code,
-    this.statusCode,
-    this.path,
-    this.method,
-    this.details,
-  });
+  GatewayApiException({required this.message, this.code, this.statusCode, this.path, this.method, this.details});
 
   final String message;
   final String? code;
@@ -76,30 +69,52 @@ class SlothGatewayApi with InfraLogger {
     return const <String, dynamic>{};
   }
 
-  String _friendlyMessage({required String raw, String? code, int? statusCode}) {
+  String _friendlyMessage({required String raw, String? code, int? statusCode, String? path}) {
     final message = raw.trim();
-    final lowerRaw = message.toLowerCase();
-    if (lowerRaw.contains("response has a status code of")) {
-      final inferred = RegExp(r"status code of (\d{3})").firstMatch(lowerRaw);
-      final parsed = inferred == null ? null : int.tryParse(inferred.group(1)!);
-      final finalStatus = statusCode ?? parsed;
-      if (finalStatus == 401) return "登录状态已失效，请重新登录";
-      if (finalStatus == 403) return "当前请求被拒绝，请检查账号权限";
-      if (finalStatus == 404) return "请求接口不存在，请更新网关服务";
-      if (finalStatus == 422) return "请求参数不正确，请检查输入信息";
-      if (finalStatus != null && finalStatus >= 500) return "网关服务暂时不可用，请稍后重试";
-      return "请求失败，请稍后重试";
+    final lower = message.toLowerCase();
+    final lowerPath = (path ?? "").toLowerCase();
+
+    int? inferStatus() {
+      if (statusCode != null) return statusCode;
+      final match = RegExp(r"status code of (\d{3})").firstMatch(lower);
+      if (match == null) return null;
+      return int.tryParse(match.group(1)!);
     }
-    final looksHtml = lowerRaw.contains("<html") || lowerRaw.contains("<!doctype") || lowerRaw.contains("<body");
-    final statusMatch = RegExp(r"status code of (\d{3})").firstMatch(lowerRaw);
-    final inferredStatus = statusMatch == null ? null : int.tryParse(statusMatch.group(1)!);
-    final finalStatus = statusCode ?? inferredStatus;
-    if (message.isEmpty) return "请求失败，请稍后重试";
-    if (looksHtml) {
-      if (finalStatus != null && finalStatus >= 500) return "网关服务暂时不可用，请稍后重试";
-      return "请求失败，请稍后重试";
+
+    String fallbackByStatus(int? status) {
+      switch (status) {
+        case 400:
+        case 422:
+          return "请求参数不正确，请检查输入信息";
+        case 401:
+          return "登录状态已失效，请重新登录";
+        case 403:
+          return "当前请求被拒绝，请检查账户权限";
+        case 404:
+          return "请求接口不存在，请更新网关服务";
+        default:
+          if (status != null && status >= 500) {
+            return "网关服务暂时不可用，请稍后重试";
+          }
+          return "请求失败，请稍后重试";
+      }
     }
-    if (_hasChinese.hasMatch(message)) return message;
+
+    final finalStatus = inferStatus();
+    final looksHtml = lower.contains("<html") || lower.contains("<!doctype") || lower.contains("<body");
+    if (looksHtml) return fallbackByStatus(finalStatus);
+
+    final isSubscriptionPath = lowerPath.contains("/subscription");
+    if (isSubscriptionPath &&
+        (code == "SUBSCRIPTION_NOT_AVAILABLE" ||
+            code == "FORBIDDEN" ||
+            finalStatus == 401 ||
+            finalStatus == 403 ||
+            lower.contains("token is error") ||
+            lower.contains("forbidden") ||
+            lower.contains("denied"))) {
+      return "当前账户暂无可用订阅，请先购买套餐后再同步";
+    }
 
     switch (code) {
       case "EMAIL_SUFFIX_NOT_ALLOWED":
@@ -113,9 +128,9 @@ class SlothGatewayApi with InfraLogger {
       case "EMAIL_VERIFY_REQUIRED":
         return "当前站点要求邮箱验证码";
       case "EMAIL_CODE_INVALID":
-        return "邮箱验证码错误或已过期";
+        return "验证码有误或已过期";
       case "CAPTCHA_REQUIRED":
-        return "当前站点开启人机验证，请先在网页端完成验证";
+        return "当前站点要求人机验证，请先在网页完成验证后再继续";
       case "INVITE_CODE_REQUIRED":
         return "当前站点要求填写邀请码";
       case "ORDER_PENDING_EXISTS":
@@ -124,32 +139,32 @@ class SlothGatewayApi with InfraLogger {
         return "您有待生效订单，请稍后再试";
       case "ORDER_ALREADY_PAID":
         return "该订单已支付，无需重复支付";
+      case "ORDER_NOT_CANCELLABLE":
+        return "当前订单状态不可取消";
       case "TICKET_UNAVAILABLE":
         return "工单入口暂时不可用，请稍后重试";
       case "UNAUTHORIZED":
         return "登录状态已失效，请重新登录";
-      case "ORDER_NOT_CANCELLABLE":
-        return "当前订单状态不可取消";
+      case "SUBSCRIPTION_NOT_AVAILABLE":
+        return "当前账户暂无可用订阅，请先购买套餐后再同步";
       default:
         break;
     }
 
-    final lower = message.toLowerCase();
     if (lower.contains("route") && lower.contains("not found")) {
       return "网关接口未部署完整，请更新服务器版本";
     }
     if (lower.contains("device_id") && lower.contains("mismatch")) {
       return "设备绑定校验失败，请在 App 内重新发起绑定";
     }
+    if (lower.contains("token is error") || lower.contains("jwt malformed")) {
+      return "登录态无效，请重新登录";
+    }
     if (lower.contains("timeout")) return "请求超时，请稍后重试";
     if (lower.contains("network") || lower.contains("socket")) return "网络异常，请检查网络后重试";
-    if (finalStatus == 401) return "登录状态已失效，请重新登录";
-    if (finalStatus == 403) return "当前请求被拒绝，请检查账号权限";
-    if (finalStatus == 404) return "请求接口不存在，请更新网关服务";
-    if (finalStatus == 422) return "请求参数不正确，请检查输入信息";
-    if (finalStatus != null && finalStatus >= 500) return "网关服务暂时不可用，请稍后重试";
 
-    return message;
+    if (_hasChinese.hasMatch(message) && message.isNotEmpty) return message;
+    return fallbackByStatus(finalStatus);
   }
 
   Future<GatewayBindExchangeResult> bindExchange({
@@ -245,6 +260,17 @@ class SlothGatewayApi with InfraLogger {
   Future<GatewayInviteSummary> inviteSummary(String accessToken) async {
     final data = await _request(method: "GET", path: "/api/app/v1/invite/summary", accessToken: accessToken);
     return GatewayInviteSummary.fromMap(data);
+  }
+
+  Future<bool> inviteGenerate(String accessToken) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/invite/generate",
+      accessToken: accessToken,
+      body: const {},
+    );
+    final inviteCode = data["invite_code"]?.toString().trim() ?? "";
+    return inviteCode.isNotEmpty || data["generated"] == true;
   }
 
   Future<bool> inviteWithdraw({required String accessToken, required double amount}) async {
@@ -408,12 +434,63 @@ class SlothGatewayApi with InfraLogger {
     return GatewayTicketEntry.fromMap(data);
   }
 
-  Future<GatewayTelegramBindingStatus> telegramBinding(String accessToken) async {
+  Future<List<GatewayTicketItem>> tickets(String accessToken) async {
+    final data = await _request(method: "GET", path: "/api/app/v1/support/tickets", accessToken: accessToken);
+    final raw = data["tickets"];
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((item) => GatewayTicketItem.fromMap(item.cast<String, dynamic>())).toList();
+  }
+
+  Future<GatewayTicketItem?> ticketDetail({required String accessToken, required int id}) async {
+    final data = await _request(method: "GET", path: "/api/app/v1/support/tickets/$id", accessToken: accessToken);
+    final raw = data["ticket"];
+    if (raw is! Map) return null;
+    return GatewayTicketItem.fromMap(raw.cast<String, dynamic>());
+  }
+
+  Future<bool> createTicket({
+    required String accessToken,
+    required String subject,
+    required String message,
+    int level = 1,
+  }) async {
     final data = await _request(
-      method: "GET",
-      path: "/api/app/v1/account/telegram-binding",
+      method: "POST",
+      path: "/api/app/v1/support/tickets",
       accessToken: accessToken,
+      body: {"subject": subject, "message": message, "level": level},
     );
+    return data["created"] == true;
+  }
+
+  Future<GatewayTicketItem?> replyTicket({
+    required String accessToken,
+    required int id,
+    required String message,
+  }) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/support/tickets/$id/reply",
+      accessToken: accessToken,
+      body: {"message": message},
+    );
+    final raw = data["ticket"];
+    if (raw is! Map) return null;
+    return GatewayTicketItem.fromMap(raw.cast<String, dynamic>());
+  }
+
+  Future<bool> closeTicket({required String accessToken, required int id}) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/support/tickets/$id/close",
+      accessToken: accessToken,
+      body: const {},
+    );
+    return data["closed"] == true;
+  }
+
+  Future<GatewayTelegramBindingStatus> telegramBinding(String accessToken) async {
+    final data = await _request(method: "GET", path: "/api/app/v1/account/telegram-binding", accessToken: accessToken);
     return GatewayTelegramBindingStatus.fromMap(data);
   }
 
@@ -439,7 +516,7 @@ class SlothGatewayApi with InfraLogger {
         throw GatewayApiException(
           code: code,
           statusCode: response.statusCode,
-          message: _friendlyMessage(raw: rawMessage, code: code, statusCode: response.statusCode),
+          message: _friendlyMessage(raw: rawMessage, code: code, statusCode: response.statusCode, path: path),
           path: path,
           method: method,
           details: _asStringKeyedMap(err["details"]),
@@ -461,7 +538,7 @@ class SlothGatewayApi with InfraLogger {
         throw GatewayApiException(
           code: code,
           statusCode: error.response?.statusCode,
-          message: _friendlyMessage(raw: rawMessage, code: code, statusCode: error.response?.statusCode),
+          message: _friendlyMessage(raw: rawMessage, code: code, statusCode: error.response?.statusCode, path: path),
           path: path,
           method: method,
           details: _asStringKeyedMap(err["details"]),
@@ -472,6 +549,7 @@ class SlothGatewayApi with InfraLogger {
         message: _friendlyMessage(
           raw: error.message ?? "Gateway request failed",
           statusCode: error.response?.statusCode,
+          path: path,
         ),
         path: path,
         method: method,

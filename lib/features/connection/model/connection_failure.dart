@@ -1,4 +1,4 @@
-﻿import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/model/failures.dart';
 import 'package:hiddify/features/settings/model/config_option_failure.dart';
@@ -10,23 +10,20 @@ String? _normalizeUnexpectedConnectivityMessage(Object? error) {
   final raw = error.toString();
   final text = raw.toLowerCase();
 
-  if (
-      text.contains("tun permission denied") ||
+  if (text.contains("tun permission denied") ||
       text.contains("vpn permission denied") ||
       (text.contains("permission denied") && text.contains("tun"))) {
-    return "请先在系统中授予 VPN/TUN 权限后再连接";
+    return "请先在系统中授予 VPN/TUN 权限后再连接。可在系统设置 > VPN > 树懒VPN 中允许连接。";
   }
 
-  if (
-      text.contains("failed to start background core") ||
+  if (text.contains("failed to start background core") ||
       text.contains("background core is not started yet") ||
       text.contains("createservice - null") ||
       text.contains("createservice")) {
     return "后台服务启动失败，请重试；如仍失败请重启应用";
   }
 
-  if (
-      text.contains("profile not found") ||
+  if (text.contains("profile not found") ||
       text.contains("empty outbound") ||
       text.contains("no profile") ||
       text.contains("subscription content is empty")) {

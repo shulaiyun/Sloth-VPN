@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class GatewayWebViewPage extends StatefulWidget {
-  const GatewayWebViewPage({
-    super.key,
-    required this.url,
-    required this.title,
-  });
+  const GatewayWebViewPage({super.key, required this.url, required this.title});
 
   final String url;
   final String title;
@@ -20,6 +16,8 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
   late final WebViewController _controller;
   bool _loading = true;
   String? _errorText;
+
+  bool get _isZh => Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
 
   @override
   void initState() {
@@ -58,8 +56,15 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
             return NavigationDecision.navigate;
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+
+    final parsed = Uri.tryParse(widget.url);
+    if (parsed == null || (!parsed.hasScheme)) {
+      _errorText = _isZh ? "页面地址无效" : "Invalid page URL";
+      _loading = false;
+      return;
+    }
+    _controller.loadRequest(parsed);
   }
 
   Future<void> _openExternal() async {
@@ -74,14 +79,8 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(
-            onPressed: _openExternal,
-            icon: const Icon(Icons.open_in_browser),
-          ),
-          IconButton(
-            onPressed: () => _controller.reload(),
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _openExternal, icon: const Icon(Icons.open_in_browser)),
+          IconButton(onPressed: () => _controller.reload(), icon: const Icon(Icons.refresh)),
         ],
       ),
       body: Stack(
@@ -97,21 +96,17 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
                     const Icon(Icons.error_outline, size: 32),
                     const SizedBox(height: 12),
                     Text(
-                      "页面加载失败，请重试或在外部浏览器打开",
+                      _isZh ? "页面加载失败，请重试或在外部浏览器打开" : "Failed to load page, retry or open in browser",
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      _errorText!,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text(_errorText!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       children: [
-                        OutlinedButton(onPressed: () => _controller.reload(), child: const Text("重试")),
-                        FilledButton(onPressed: _openExternal, child: const Text("外部浏览器打开")),
+                        OutlinedButton(onPressed: () => _controller.reload(), child: Text(_isZh ? "重试" : "Retry")),
+                        FilledButton(onPressed: _openExternal, child: Text(_isZh ? "外部浏览器打开" : "Open in browser")),
                       ],
                     ),
                   ],
@@ -124,5 +119,3 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
     );
   }
 }
-
-

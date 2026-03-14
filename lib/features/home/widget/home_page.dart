@@ -1,4 +1,4 @@
-﻿import 'package:dartx/dartx.dart';
+import 'package:dartx/dartx.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -45,7 +45,7 @@ class HomePage extends HookConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Assets.images.logo.svg(height: 36, width: 36),
+            Assets.images.logo.svg(height: 34, width: 34),
             const Gap(10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,7 +108,7 @@ class HomePage extends HookConsumerWidget {
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
                       child: _ConnectionHeaderCard(
                         title: statusText,
                         connected: connectionStatus.valueOrNull == const Connected(),
@@ -119,7 +119,7 @@ class HomePage extends HookConsumerWidget {
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
                       child: _GatewayEntryCard(refreshSignal: gatewayRefreshTick),
                     ),
                   ),
@@ -128,7 +128,7 @@ class HomePage extends HookConsumerWidget {
                       child: ProfileTile(
                         profile: profile,
                         isMain: true,
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                         color: theme.colorScheme.surfaceContainer,
                       ),
                     ),
@@ -136,14 +136,14 @@ class HomePage extends HookConsumerWidget {
                   },
                   const SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      padding: EdgeInsets.fromLTRB(14, 0, 14, 0),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ConnectionButton(),
-                          SizedBox(height: 2),
+                          SizedBox(height: 1),
                           ActiveProxyDelayIndicator(),
-                          SizedBox(height: 2),
+                          SizedBox(height: 1),
                           ActiveProxyFooter(),
                         ],
                       ),
@@ -219,15 +219,15 @@ class _ConnectionHeaderCard extends StatelessWidget {
         gradient: SlothGradients.heroBackground,
         boxShadow: SlothShadows.card,
       ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
@@ -334,6 +334,22 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
     return "${(bytes / mb).toStringAsFixed(2)} MB";
   }
 
+  String _formatIsoTime(String? value) {
+    if (value == null || value.isEmpty) return "--";
+    DateTime? dt = DateTime.tryParse(value);
+    if (dt == null) {
+      final numeric = num.tryParse(value);
+      if (numeric != null && numeric > 0) {
+        final millis = numeric > 9999999999 ? numeric.toInt() : (numeric * 1000).toInt();
+        dt = DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+      }
+    }
+    if (dt == null || dt.year <= 1970) return "--";
+    final local = dt.toLocal();
+    final two = (int n) => n.toString().padLeft(2, '0');
+    return "${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}";
+  }
+
   @override
   void initState() {
     super.initState();
@@ -354,7 +370,11 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
       final loggedIn = await portal.isLoggedIn();
       GatewayAccountSummary? summary;
       if (loggedIn) {
-        summary = await portal.fetchAccountSummary();
+        try {
+          summary = await portal.fetchAccountSummary();
+        } catch (_) {
+          summary = null;
+        }
       }
       if (!mounted) return;
       setState(() {
@@ -387,20 +407,20 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.syncFailed("unknown"))));
     } finally {
-      if (mounted) {
-        setState(() => _syncing = false);
-      }
+      if (mounted) setState(() => _syncing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final g = GatewayL10n.of(context);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
     final theme = Theme.of(context);
+
     if (_loading) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Row(
             children: [
               const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -418,20 +438,27 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              g.accountAndPlanSectionTitle,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Text(
+                  g.accountAndPlanSectionTitle,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                Text(
+                  _loggedIn ? g.statusLoggedIn(_summary?.email ?? "--") : g.statusNotLoggedIn,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
             ),
-            const SizedBox(height: 1),
+            const SizedBox(height: 4),
             if (_loggedIn) ...[
-              Text(g.statusLoggedIn(_summary?.email ?? "--")),
-              const SizedBox(height: 2),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
                 children: [
                   _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
-                  _MiniStatusTile(label: g.homeExpireAt, value: _summary?.expiredAt ?? "--"),
+                  _MiniStatusTile(label: g.homeExpireAt, value: _formatIsoTime(_summary?.expiredAt)),
                   _MiniStatusTile(
                     label: g.homeRemainingTraffic,
                     value: _formatTraffic(_summary?.trafficRemaining ?? 0),
@@ -449,9 +476,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 ),
               ],
             ] else ...[
-              Text(g.statusNotLoggedIn),
-              const SizedBox(height: 1),
-              Text(g.homeGuide),
+              Text(g.homeGuide, style: theme.textTheme.bodySmall),
             ],
             const SizedBox(height: 4),
             Wrap(
@@ -463,12 +488,16 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 else
                   FilledButton(onPressed: () => context.push("/home/gateway-login"), child: Text(g.login)),
                 if (_loggedIn)
-                  OutlinedButton(onPressed: () => context.go("/gateway-plans"), child: Text(g.quickRenew))
+                  OutlinedButton(
+                    onPressed: () => context.go("/gateway-plans"),
+                    child: Text(isZh ? "购买 / 续费" : "Buy / Renew"),
+                  )
                 else
                   OutlinedButton(onPressed: () => context.push("/home/gateway-register"), child: Text(g.register)),
-                TextButton(onPressed: () => context.go("/gateway-plans"), child: Text(g.viewPlans)),
                 if (_loggedIn)
-                  TextButton(onPressed: _syncing ? null : _syncNow, child: Text(_syncing ? g.processing : g.syncNow)),
+                  TextButton(onPressed: _syncing ? null : _syncNow, child: Text(_syncing ? g.processing : g.syncNow))
+                else
+                  TextButton(onPressed: () => context.go("/gateway-plans"), child: Text(g.viewPlans)),
               ],
             ),
           ],

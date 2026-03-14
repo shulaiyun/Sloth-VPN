@@ -17,6 +17,7 @@ class GatewayNoticesPage extends HookConsumerWidget {
     final loading = useState(true);
     final items = useState<List<GatewayNoticeItem>>(<GatewayNoticeItem>[]);
     final error = useState<String?>(null);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
 
     Future<void> load() async {
       loading.value = true;
@@ -38,7 +39,10 @@ class GatewayNoticesPage extends HookConsumerWidget {
     }, const []);
 
     if (loading.value) {
-      return Scaffold(appBar: AppBar(title: Text(g.noticesTitle)), body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: Text(g.noticesTitle)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (error.value != null) {
@@ -61,7 +65,7 @@ class GatewayNoticesPage extends HookConsumerWidget {
         actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh))],
       ),
       body: items.value.isEmpty
-          ? const Center(child: Text("暂无公告"))
+          ? Center(child: Text(isZh ? "暂无公告" : "No notices"))
           : ListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: items.value.length,
@@ -76,8 +80,7 @@ class GatewayNoticesPage extends HookConsumerWidget {
                       children: [
                         Text(item.title, style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 6),
-                        if (item.updatedAt != null)
-                          Text(item.updatedAt!, style: Theme.of(context).textTheme.bodySmall),
+                        if (item.updatedAt != null) Text(item.updatedAt!, style: Theme.of(context).textTheme.bodySmall),
                         const SizedBox(height: 10),
                         SelectableText(item.content),
                       ],
@@ -93,10 +96,10 @@ class GatewayNoticesPage extends HookConsumerWidget {
 class GatewayKnowledgePage extends HookConsumerWidget {
   const GatewayKnowledgePage({super.key});
 
-  String _categoryLabel(String code) {
+  String _categoryLabel(String code, bool isZh) {
     switch (code) {
       case "android":
-        return "安卓";
+        return isZh ? "安卓" : "Android";
       case "ios":
         return "iPhone / iOS";
       case "windows":
@@ -106,13 +109,14 @@ class GatewayKnowledgePage extends HookConsumerWidget {
       case "linux":
         return "Linux";
       default:
-        return "通用";
+        return isZh ? "通用" : "General";
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
     final loading = useState(true);
     final items = useState<List<GatewayKnowledgeItem>>(<GatewayKnowledgeItem>[]);
     final error = useState<String?>(null);
@@ -180,7 +184,7 @@ class GatewayKnowledgePage extends HookConsumerWidget {
                     (item) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(item == "all" ? "全部" : _categoryLabel(item)),
+                        label: Text(item == "all" ? (isZh ? "全部" : "All") : _categoryLabel(item, isZh)),
                         selected: category.value == item,
                         onSelected: (_) => category.value = item,
                       ),
@@ -202,12 +206,9 @@ class GatewayKnowledgePage extends HookConsumerWidget {
                         margin: const EdgeInsets.only(bottom: 10),
                         child: ListTile(
                           title: Text(item.title),
-                          subtitle: Text(_categoryLabel(item.category)),
+                          subtitle: Text(_categoryLabel(item.category, isZh)),
                           trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.push(
-                            "/gateway-account/knowledge-detail",
-                            extra: item,
-                          ),
+                          onTap: () => context.push("/gateway-account/knowledge-detail", extra: item),
                         ),
                       );
                     },
