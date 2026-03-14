@@ -48,6 +48,16 @@ class SlothGatewayPortalController with AppLogger {
     bumpSlothGatewayUiRefresh(_ref);
   }
 
+  Future<void> _tryAutoSync(String reason) async {
+    try {
+      await _ref.read(slothGatewaySyncControllerProvider).refreshNow(reason: reason);
+    } catch (error, stackTrace) {
+      loggy.warning("gateway auto sync failed after auth, keep login session", error, stackTrace);
+    } finally {
+      _notifyUiRefresh();
+    }
+  }
+
   Future<bool> isLoggedIn() async {
     final token = await _accessToken();
     return !_isBlank(token);
@@ -67,6 +77,14 @@ class SlothGatewayPortalController with AppLogger {
     final token = await _accessToken();
     if (_isBlank(token)) return null;
     return _api.inviteSummary(token!);
+  }
+
+  Future<bool> requestInviteWithdraw(double amount) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再发起提现");
+    }
+    return _api.inviteWithdraw(accessToken: token!, amount: amount);
   }
 
   Future<bool> sendEmailVerify(String email) {
@@ -89,8 +107,8 @@ class SlothGatewayPortalController with AppLogger {
       refreshToken: result.refreshToken,
       sessionId: result.sessionId,
     );
-    await _ref.read(slothGatewaySyncControllerProvider).refreshNow(reason: "auth_login");
     _notifyUiRefresh();
+    await _tryAutoSync("auth_login");
   }
 
   Future<void> register({
@@ -116,8 +134,8 @@ class SlothGatewayPortalController with AppLogger {
       refreshToken: result.refreshToken,
       sessionId: result.sessionId,
     );
-    await _ref.read(slothGatewaySyncControllerProvider).refreshNow(reason: "auth_register");
     _notifyUiRefresh();
+    await _tryAutoSync("auth_register");
   }
 
   Future<void> logout() async {
@@ -221,5 +239,13 @@ class SlothGatewayPortalController with AppLogger {
       throw GatewayApiException(message: "请先登录后再打开工单");
     }
     return _api.ticketEntry(token!);
+  }
+
+  Future<GatewayTelegramBindingStatus> fetchTelegramBinding() async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再查看 Telegram 绑定");
+    }
+    return _api.telegramBinding(token!);
   }
 }
