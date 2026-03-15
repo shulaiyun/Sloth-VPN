@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hiddify/core/theme/sloth_design_tokens.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_l10n.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
@@ -77,7 +78,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           action: SnackBarAction(
-            label: isZh ? '去订单页' : 'View Orders',
+            label: isZh ? '鍘昏鍗曢〉' : 'View Orders',
             onPressed: () {
               tabIndex.value = 1;
               orderStatusFilter.value = 'pending';
@@ -198,7 +199,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           if (!context.mounted) return;
           showTip(
             isZh
-                ? '支付页已在应用内安全浏览器打开，请完成支付后返回应用，订单将自动刷新'
+                ? 'Payment opened in app browser, return and order will auto refresh'
                 : 'Payment opened in app browser, return and order will auto refresh',
             duration: const Duration(seconds: 8),
           );
@@ -215,7 +216,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           if (!context.mounted) return;
           showTip(
             isZh
-                ? '支付页已在系统浏览器打开，请完成支付后返回应用，订单将自动刷新'
+                ? 'Payment opened in system browser, return and order will auto refresh'
                 : 'Payment opened in system browser, return and order will auto refresh',
             duration: const Duration(seconds: 8),
           );
@@ -229,7 +230,7 @@ class GatewayPlansPage extends HookConsumerWidget {
       if (!context.mounted) return;
       await context.push(
         '/gateway-account/webview',
-        extra: <String, String>{'url': target, 'title': isZh ? '支付订单 $orderNo' : 'Pay Order $orderNo'},
+        extra: <String, String>{'url': target, 'title': isZh ? '鏀粯璁㈠崟 $orderNo' : 'Pay Order $orderNo'},
       );
 
       if (!context.mounted) return;
@@ -288,10 +289,10 @@ class GatewayPlansPage extends HookConsumerWidget {
               children: [
                 Text(g.orderDetail, style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
-                kv(isZh ? '订单号' : 'Order No', order.orderNo),
+                kv(isZh ? 'Order No' : 'Order No', order.orderNo),
                 kv(g.orderType, order.typeLabel.isEmpty ? order.type : order.typeLabel),
-                kv(isZh ? '状态' : 'Status', g.orderStatusLabel(order.status)),
-                kv(isZh ? '周期' : 'Period', g.periodLabel(order.period ?? '', order.period ?? '-')),
+                kv(isZh ? 'Status' : 'Status', g.orderStatusLabel(order.status)),
+                kv(isZh ? '鍛ㄦ湡' : 'Period', g.periodLabel(order.period ?? '', order.period ?? '-')),
                 kv(g.orderAmount, _presentPrice(order.totalAmount)),
                 kv(g.orderBalanceAmount, _presentPrice(order.balanceAmount)),
                 kv(g.orderDiscountAmount, _presentPrice(order.discountAmount)),
@@ -323,7 +324,9 @@ class GatewayPlansPage extends HookConsumerWidget {
             return;
           }
           showTip(
-            isZh ? '支付结果确认中，订单将在后台自动刷新，也可稍后手动点“刷新状态”' : 'Payment is being confirmed and will auto refresh',
+            isZh
+                ? 'Payment is being confirmed and will auto refresh'
+                : 'Payment is being confirmed and will auto refresh',
             duration: const Duration(seconds: 8),
           );
         }
@@ -350,7 +353,7 @@ class GatewayPlansPage extends HookConsumerWidget {
         }
         if (error.code == 'ORDER_PAYMENT_CHANNEL_EXPIRED') {
           showTip(
-            isZh ? '支付通道已失效，请使用“关闭并重建”后再支付' : 'Payment channel expired, recreate order first',
+            isZh ? 'Payment channel expired, recreate order first' : 'Payment channel expired, recreate order first',
             duration: const Duration(seconds: 8),
           );
           return;
@@ -412,7 +415,7 @@ class GatewayPlansPage extends HookConsumerWidget {
       final period = order.period?.trim() ?? '';
       final planId = order.planId;
       if (planId == null || planId <= 0 || period.isEmpty) {
-        showTip(isZh ? '该订单缺少套餐信息，无法重建' : 'Order missing plan data, cannot recreate');
+        showTip(isZh ? '璇ヨ鍗曠己灏戝椁愪俊鎭紝鏃犳硶閲嶅缓' : 'Order missing plan data, cannot recreate');
         return;
       }
       runningOrderNo.value = order.orderNo;
@@ -432,7 +435,7 @@ class GatewayPlansPage extends HookConsumerWidget {
             showTip(g.orderCompletedAndSynced, duration: const Duration(seconds: 8));
           } else {
             showTip(
-              isZh ? '订单已重建，支付结果确认中，请稍后刷新状态' : 'Order recreated, payment confirmation pending',
+              isZh ? 'Order recreated, payment confirmation pending' : 'Order recreated, payment confirmation pending',
               duration: const Duration(seconds: 8),
             );
           }
@@ -458,7 +461,9 @@ class GatewayPlansPage extends HookConsumerWidget {
     Future<bool> confirmBeforeBuy(GatewayPlan plan, String period) async {
       final currentPlan = summary.value?.planName?.trim();
       final isRenew = currentPlan != null && currentPlan.isNotEmpty && currentPlan == plan.name.trim();
-      final title = isRenew ? (isZh ? '续费确认' : 'Renew Confirmation') : (isZh ? '切换套餐确认' : 'Plan Change Confirmation');
+      final title = isRenew
+          ? (isZh ? '缁垂纭' : 'Renew Confirmation')
+          : (isZh ? '鍒囨崲濂楅纭' : 'Plan Change Confirmation');
       final lines = <String>['1. ${g.renewRulesSamePlan}', '2. ${g.renewRulesUpgrade}', '3. ${g.renewRulesRefund}'];
       final selectedPeriod = plan.periods.firstWhere(
         (item) => item.code == period,
@@ -468,11 +473,11 @@ class GatewayPlansPage extends HookConsumerWidget {
       final amountText = _presentPrice(selectedPeriod.price);
       final content = StringBuffer()
         ..writeln(
-          '${isZh ? '当前套餐' : 'Current plan'}: ${currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan}',
+          '${isZh ? '褰撳墠濂楅' : 'Current plan'}: ${currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan}',
         )
-        ..writeln('${isZh ? '目标套餐' : 'Target plan'}: ${plan.name}')
-        ..writeln('${isZh ? '购买周期' : 'Billing cycle'}: $periodLabel')
-        ..writeln('${isZh ? '订单金额' : 'Order amount'}: $amountText')
+        ..writeln('${isZh ? '鐩爣濂楅' : 'Target plan'}: ${plan.name}')
+        ..writeln('${isZh ? '璐拱鍛ㄦ湡' : 'Billing cycle'}: $periodLabel')
+        ..writeln('${isZh ? '璁㈠崟閲戦' : 'Order amount'}: $amountText')
         ..writeln()
         ..writeln(lines.join('\n'));
 
@@ -482,8 +487,8 @@ class GatewayPlansPage extends HookConsumerWidget {
           title: Text(title),
           content: Text(content.toString()),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '取消' : 'Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '确认下单' : 'Confirm')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '鍙栨秷' : 'Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '纭涓嬪崟' : 'Confirm')),
           ],
         ),
       );
@@ -524,7 +529,9 @@ class GatewayPlansPage extends HookConsumerWidget {
             return;
           }
           showTip(
-            isZh ? '支付结果确认中，订单将在后台自动刷新，也可稍后手动点“刷新状态”' : 'Payment is being confirmed and will auto refresh',
+            isZh
+                ? 'Payment is being confirmed and will auto refresh'
+                : 'Payment is being confirmed and will auto refresh',
             duration: const Duration(seconds: 8),
           );
         }
@@ -542,7 +549,7 @@ class GatewayPlansPage extends HookConsumerWidget {
         if (!context.mounted) return;
         if (error.code == 'ORDER_PENDING_EXISTS' || error.code == 'ORDER_WAITING_EFFECTIVE') {
           final existingOrderNo = existingOrderNoFromError(error);
-          final tip = existingOrderNo == null ? error.message : '${error.message} (${existingOrderNo})';
+          final tip = existingOrderNo == null ? error.message : '${error.message} ($existingOrderNo)';
           showOrderConflictWithAction(tip);
           return;
         }
@@ -651,7 +658,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (!plan.sell) Chip(label: Text(isZh ? '暂停售卖' : 'Unavailable')),
+                        if (!plan.sell) Chip(label: Text(isZh ? '鏆傚仠鍞崠' : 'Unavailable')),
                       ],
                     ),
                     if (plan.description.isNotEmpty) ...[
@@ -687,10 +694,10 @@ class GatewayPlansPage extends HookConsumerWidget {
                       },
                     ),
                     const SizedBox(height: 10),
-                    FilledButton.icon(
+                    _GatewayPrimaryActionButton(
                       onPressed: (plan.sell && runningPlanId.value != plan.id) ? () => buy(plan) : null,
                       icon: const Icon(Icons.payments_rounded),
-                      label: Text(runningPlanId.value == plan.id ? g.processing : g.buyNow),
+                      label: runningPlanId.value == plan.id ? g.processing : g.buyNow,
                     ),
                   ],
                 ),
@@ -740,7 +747,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                 onTap: () => orderStatusFilter.value = 'expired',
               ),
               _OrderFilterChip(
-                label: isZh ? '已关闭' : 'Closed',
+                label: isZh ? 'Closed' : 'Closed',
                 selected: orderStatusFilter.value == 'closed',
                 onTap: () => orderStatusFilter.value = 'closed',
               ),
@@ -771,9 +778,9 @@ class GatewayPlansPage extends HookConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text('${isZh ? '订单号' : 'Order'}: ${order.orderNo}'),
+                      Text('${isZh ? 'Order' : 'Order'}: ${order.orderNo}'),
                       Text('${g.orderType}: ${order.typeLabel.isEmpty ? order.type : order.typeLabel}'),
-                      Text('${isZh ? '周期' : 'Period'}: ${g.periodLabel(order.period ?? '', order.period ?? '-')}'),
+                      Text('${isZh ? '鍛ㄦ湡' : 'Period'}: ${g.periodLabel(order.period ?? '', order.period ?? '-')}'),
                       Text('${g.orderAmount}: ${_presentPrice(order.totalAmount)}'),
                       Text('${g.orderSurplusAmount}: ${_presentPrice(order.surplusAmount)}'),
                       Text('${g.orderRefundAmount}: ${_presentPrice(order.refundAmount)}'),
@@ -785,27 +792,27 @@ class GatewayPlansPage extends HookConsumerWidget {
                         runSpacing: 8,
                         children: [
                           if (order.isPayable)
-                            FilledButton.icon(
+                            _GatewayPrimaryActionButton(
                               onPressed: busy ? null : () => continuePay(order),
                               icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                              label: Text(busy ? g.processing : g.continuePay),
+                              label: busy ? g.processing : g.continuePay,
                             ),
                           if (order.canCancel)
-                            OutlinedButton.icon(
+                            _GatewayOutlineActionButton(
                               onPressed: busy ? null : () => cancelOrder(order),
                               icon: const Icon(Icons.cancel_outlined, size: 18),
-                              label: Text(g.cancelOrder),
+                              label: g.cancelOrder,
                             ),
                           if (order.isPayable && order.canCancel)
-                            OutlinedButton.icon(
+                            _GatewayOutlineActionButton(
                               onPressed: busy ? null : () => closeAndRecreateOrder(order),
                               icon: const Icon(Icons.autorenew_rounded, size: 18),
-                              label: Text(isZh ? '关闭并重建' : 'Recreate Order'),
+                              label: isZh ? 'Recreate Order' : 'Recreate Order',
                             ),
-                          OutlinedButton.icon(
+                          _GatewayOutlineActionButton(
                             onPressed: busy ? null : () => refreshOrderStatus(order),
                             icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: Text(g.refreshOrderStatus),
+                            label: g.refreshOrderStatus,
                           ),
                           TextButton.icon(
                             onPressed: busy ? null : () => showOrderDetail(order),
@@ -843,7 +850,7 @@ class GatewayPlansPage extends HookConsumerWidget {
     } else if (errorText.value != null) {
       final errorLower = errorText.value?.toLowerCase() ?? '';
       final authExpired =
-          (errorText.value?.contains('登录状态已失效') ?? false) ||
+          (errorText.value?.contains('鐧诲綍鐘舵€佸凡澶辨晥') ?? false) ||
           errorLower.contains('unauthorized') ||
           errorLower.contains('session') ||
           errorLower.contains('invalid access token') ||
@@ -858,17 +865,17 @@ class GatewayPlansPage extends HookConsumerWidget {
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => context.push('/home/gateway-login'),
-              child: Text(isZh ? '重新登录' : 'Login Again'),
+              child: Text(isZh ? '閲嶆柊鐧诲綍' : 'Login Again'),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () async {
                 await ref.read(slothGatewayPortalControllerProvider).logout();
                 if (!context.mounted) return;
-                showTip(isZh ? '已退出登录' : 'Logged out');
+                showTip(isZh ? 'Logged out' : 'Logged out');
                 await load();
               },
-              child: Text(isZh ? '退出登录' : 'Logout'),
+              child: Text(isZh ? 'Logout' : 'Logout'),
             ),
           ],
         ],
@@ -877,23 +884,29 @@ class GatewayPlansPage extends HookConsumerWidget {
       body = Column(
         children: [
           const SizedBox(height: 8),
-          SegmentedButton<int>(
-            segments: [
-              ButtonSegment<int>(
-                value: 0,
-                label: Text(g.purchaseTabPlans),
-                icon: const Icon(Icons.inventory_2_outlined),
-              ),
-              ButtonSegment<int>(
-                value: 1,
-                label: Text(g.purchaseTabOrders),
-                icon: const Icon(Icons.receipt_long_outlined),
-              ),
-            ],
-            selected: {tabIndex.value},
-            onSelectionChanged: (set) {
-              if (set.isNotEmpty) tabIndex.value = set.first;
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _GatewayTopTabButton(
+                    selected: tabIndex.value == 0,
+                    icon: Icons.inventory_2_rounded,
+                    label: g.purchaseTabPlans,
+                    onTap: () => tabIndex.value = 0,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _GatewayTopTabButton(
+                    selected: tabIndex.value == 1,
+                    icon: Icons.receipt_long_rounded,
+                    label: g.purchaseTabOrders,
+                    onTap: () => tabIndex.value = 1,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           Expanded(child: tabIndex.value == 0 ? planTab() : orderTab()),
@@ -917,6 +930,120 @@ class GatewayPlansPage extends HookConsumerWidget {
   }
 }
 
+class _GatewayTopTabButton extends StatelessWidget {
+  const _GatewayTopTabButton({required this.selected, required this.icon, required this.label, required this.onTap});
+
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: selected
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF113D84), Color(0xFF2F72D4), Color(0xFF34BFD0)],
+                )
+              : null,
+          color: selected ? null : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          border: Border.all(
+            color: selected ? Colors.transparent : theme.colorScheme.outlineVariant.withValues(alpha: 0.9),
+          ),
+          boxShadow: selected ? SlothShadows.card : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: selected ? Colors.white : theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GatewayPrimaryActionButton extends StatelessWidget {
+  const _GatewayPrimaryActionButton({required this.onPressed, required this.icon, required this.label});
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: disabled
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0D3B81), Color(0xFF2366CE), Color(0xFF2AB8CF)],
+              ),
+        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
+        boxShadow: disabled ? null : SlothShadows.card,
+      ),
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+class _GatewayOutlineActionButton extends StatelessWidget {
+  const _GatewayOutlineActionButton({required this.onPressed, required this.icon, required this.label});
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: icon,
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.26)),
+      ),
+    );
+  }
+}
+
 class _OrderFilterChip extends StatelessWidget {
   const _OrderFilterChip({required this.label, required this.selected, required this.onTap});
 
@@ -926,7 +1053,22 @@ class _OrderFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(label: Text(label), selected: selected, onSelected: (_) => onTap());
+    final theme = Theme.of(context);
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+      selectedColor: theme.colorScheme.primary.withValues(alpha: 0.22),
+      labelStyle: TextStyle(
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+      ),
+      side: BorderSide(
+        color: selected ? theme.colorScheme.primary.withValues(alpha: 0.44) : theme.colorScheme.outlineVariant,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
   }
 }
 
@@ -942,7 +1084,15 @@ class _TagText extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.12),
+            theme.colorScheme.secondary.withValues(alpha: 0.08),
+          ],
+        ),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
       ),
       child: Text(text, style: theme.textTheme.bodySmall),
     );

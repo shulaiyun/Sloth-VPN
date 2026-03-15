@@ -54,7 +54,7 @@ class HomePage extends HookConsumerWidget {
                 Text(Constants.appName, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 Text(
                   Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh')
-                      ? '安全 / 稳定 / 快速'
+                      ? '\u5b89\u5168 / \u7a33\u5b9a / \u5feb\u901f'
                       : 'Secure / Stable / Fast',
                   style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
@@ -97,8 +97,8 @@ class HomePage extends HookConsumerWidget {
                 image: const DecorationImage(
                   image: AssetImage('assets/images/world_map.png'),
                   fit: BoxFit.cover,
-                  alignment: Alignment(0.78, -0.35),
-                  opacity: 0.065,
+                  alignment: Alignment(1.04, -0.28),
+                  opacity: 0.058,
                 ),
               ),
             ),
@@ -222,7 +222,7 @@ class _ConnectionHeaderCard extends StatelessWidget {
     final delayText = delay <= 0
         ? "--"
         : delay > 65000
-        ? (isZh ? "超时" : "timeout")
+        ? (isZh ? "瓒呮椂" : "timeout")
         : "${delay}ms";
 
     return Container(
@@ -263,7 +263,7 @@ class _ConnectionHeaderCard extends StatelessWidget {
                   color: statusColor.withValues(alpha: 0.2),
                 ),
                 child: Text(
-                  connected ? (isZh ? "已连接" : "Connected") : (isZh ? "未连接" : "Offline"),
+                  connected ? (isZh ? "\u5df2\u8fde\u63a5" : "Connected") : (isZh ? "\u672a\u8fde\u63a5" : "Offline"),
                   style: theme.textTheme.labelSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -275,16 +275,16 @@ class _ConnectionHeaderCard extends StatelessWidget {
               Expanded(
                 child: _StatMini(
                   icon: SlothIconType.server,
-                  label: isZh ? "节点" : "Node",
+                  label: isZh ? "鑺傜偣" : "Node",
                   value: _cleanNodeLabel(activeNode),
                   leading: activeCountryCode == null || activeCountryCode!.trim().isEmpty
                       ? null
-                      : IPCountryFlag(countryCode: activeCountryCode, size: 16),
+                      : IPCountryFlag(countryCode: activeCountryCode),
                 ),
               ),
               const Gap(8),
               Expanded(
-                child: _StatMini(icon: SlothIconType.latency, label: isZh ? "延迟" : "Latency", value: delayText),
+                child: _StatMini(icon: SlothIconType.latency, label: isZh ? "寤惰繜" : "Latency", value: delayText),
               ),
             ],
           ),
@@ -522,20 +522,25 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 child: Row(
                   children: [
                     Container(
-                      width: 30,
-                      height: 30,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF2254C9), Color(0xFF5D7BFF), Color(0xFF34C3D0)],
+                        ),
+                        boxShadow: SlothShadows.card,
                       ),
-                      child: Icon(Icons.campaign_rounded, size: 20, color: theme.colorScheme.primary),
+                      child: const Icon(Icons.campaign_rounded, size: 21, color: Colors.white),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         isZh
-                            ? '新用户专享：注册后免费送三天的使用时长，登录后会自动同步节点'
-                            : 'New user offer: register and buy in-app with auto sync',
+                            ? 'New users get a 3-day free trial after registration, then auto sync starts after login.'
+                            : 'New users get a 3-day free trial after registration, then auto sync starts after login.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: theme.colorScheme.onPrimaryContainer,
@@ -552,20 +557,17 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
               runSpacing: 4,
               children: [
                 if (_loggedIn)
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFF7B7D2),
-                      foregroundColor: const Color(0xFF4A1F35),
-                    ),
+                  _GatewayEntryPrimaryAction(
                     onPressed: () => context.go("/gateway-account"),
-                    child: Text(g.myAccount),
+                    icon: const Icon(Icons.account_circle_rounded),
+                    label: g.myAccount,
                   )
                 else
                   FilledButton(onPressed: () => context.push("/home/gateway-login"), child: Text(g.login)),
                 if (_loggedIn)
                   OutlinedButton(
                     onPressed: () => context.go("/gateway-plans"),
-                    child: Text(isZh ? "购买 / 续费" : "Buy / Renew"),
+                    child: Text(isZh ? "璐拱 / 缁垂" : "Buy / Renew"),
                   )
                 else
                   OutlinedButton(onPressed: () => context.push("/home/gateway-register"), child: Text(g.register)),
@@ -576,6 +578,43 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GatewayEntryPrimaryAction extends StatelessWidget {
+  const _GatewayEntryPrimaryAction({required this.onPressed, required this.icon, required this.label});
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: disabled
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFA7C7), Color(0xFFF277A9), Color(0xFFCF5B96)],
+              ),
+        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
+        boxShadow: disabled ? null : SlothShadows.card,
+      ),
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          shadowColor: Colors.transparent,
         ),
       ),
     );

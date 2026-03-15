@@ -1,4 +1,4 @@
-﻿import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart';
 
 abstract class GatewayL10n {
   const GatewayL10n();
@@ -273,7 +273,7 @@ class _GatewayL10nZh extends GatewayL10n {
   @override
   String get openPlansAndPurchase => '进入购买中心';
   @override
-  String get telegram => 'Telegram';
+  String get telegram => 'Telegram交流群组';
   @override
   String get ticket => '工单';
   @override
@@ -631,7 +631,7 @@ class _GatewayL10nEn extends GatewayL10n {
   @override
   String get openPlansAndPurchase => 'Open Purchase';
   @override
-  String get telegram => 'Telegram';
+  String get telegram => 'Telegram Group';
   @override
   String get ticket => 'Ticket';
   @override
