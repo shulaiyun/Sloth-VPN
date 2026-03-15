@@ -23,6 +23,15 @@ class GatewayPlansPage extends HookConsumerWidget {
     return '${mb.toStringAsFixed(0)} MB';
   }
 
+  String _presentDateTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '--';
+    final dt = DateTime.tryParse(raw.trim());
+    if (dt == null) return raw;
+    final local = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
@@ -54,6 +63,26 @@ class GatewayPlansPage extends HookConsumerWidget {
           duration: duration,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+
+    void showOrderConflictWithAction(String message) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 9),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          action: SnackBarAction(
+            label: isZh ? '去订单页' : 'View Orders',
+            onPressed: () {
+              tabIndex.value = 1;
+              orderStatusFilter.value = 'pending';
+            },
+          ),
         ),
       );
     }
@@ -263,8 +292,8 @@ class GatewayPlansPage extends HookConsumerWidget {
                 kv(g.orderDiscountAmount, _presentPrice(order.discountAmount)),
                 kv(g.orderSurplusAmount, _presentPrice(order.surplusAmount)),
                 kv(g.orderRefundAmount, _presentPrice(order.refundAmount)),
-                if (order.createdAt != null) kv(g.orderCreatedAt, order.createdAt!),
-                if (order.paidAt != null) kv(g.orderPaidAt, order.paidAt!),
+                if (order.createdAt != null) kv(g.orderCreatedAt, _presentDateTime(order.createdAt)),
+                if (order.paidAt != null) kv(g.orderPaidAt, _presentDateTime(order.paidAt)),
               ],
             ),
           );
@@ -302,6 +331,18 @@ class GatewayPlansPage extends HookConsumerWidget {
         }
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
+        if (error.code == 'ORDER_ALREADY_PAID') {
+          final portal = ref.read(slothGatewayPortalControllerProvider);
+          final status = await portal.orderStatus(order.orderNo);
+          if (status.isCompleted) {
+            await syncAfterSuccess();
+          } else {
+            await load();
+          }
+          if (!context.mounted) return;
+          showTip(error.message, duration: const Duration(seconds: 8));
+          return;
+        }
         showTip(g.orderFailed(error.message));
       } finally {
         runningOrderNo.value = null;
@@ -436,6 +477,10 @@ class GatewayPlansPage extends HookConsumerWidget {
         await load();
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
+        if (error.code == 'ORDER_PENDING_EXISTS' || error.code == 'ORDER_WAITING_EFFECTIVE') {
+          showOrderConflictWithAction(error.message);
+          return;
+        }
         showTip(g.orderFailed(error.message));
       } finally {
         runningPlanId.value = null;
@@ -653,8 +698,8 @@ class GatewayPlansPage extends HookConsumerWidget {
                       Text('${g.orderAmount}: ${_presentPrice(order.totalAmount)}'),
                       Text('${g.orderSurplusAmount}: ${_presentPrice(order.surplusAmount)}'),
                       Text('${g.orderRefundAmount}: ${_presentPrice(order.refundAmount)}'),
-                      if (order.createdAt != null) Text('${g.orderCreatedAt}: ${order.createdAt}'),
-                      if (order.paidAt != null) Text('${g.orderPaidAt}: ${order.paidAt}'),
+                      if (order.createdAt != null) Text('${g.orderCreatedAt}: ${_presentDateTime(order.createdAt)}'),
+                      if (order.paidAt != null) Text('${g.orderPaidAt}: ${_presentDateTime(order.paidAt)}'),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,

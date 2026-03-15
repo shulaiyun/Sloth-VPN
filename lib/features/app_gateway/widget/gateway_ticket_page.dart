@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_portal_controller.dart';
+import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class GatewayTicketPage extends HookConsumerWidget {
@@ -24,8 +25,23 @@ class GatewayTicketPage extends HookConsumerWidget {
     final isZh = _isZh(context);
     final loading = useState(true);
     final error = useState<String?>(null);
-    final tickets = useState<List<GatewayTicketItem>>(<GatewayTicketItem>[]);
-    final localVisibleUntil = useState<Map<String, DateTime>>(<String, DateTime>{});
+    final tickets = useState<List<GatewayTicketItem>>(ref.read(slothGatewayTicketCacheProvider));
+    final visibleEpoch = ref.read(slothGatewayTicketVisibleUntilProvider);
+    final localVisibleUntil = useState<Map<String, DateTime>>(
+      visibleEpoch.map((key, value) => MapEntry(key, DateTime.fromMillisecondsSinceEpoch(value))),
+    );
+
+    void persistTickets(List<GatewayTicketItem> value) {
+      tickets.value = value;
+      ref.read(slothGatewayTicketCacheProvider.notifier).state = value;
+    }
+
+    void persistVisibleUntil(Map<String, DateTime> value) {
+      localVisibleUntil.value = value;
+      ref.read(slothGatewayTicketVisibleUntilProvider.notifier).state = value.map(
+        (key, val) => MapEntry(key, val.millisecondsSinceEpoch),
+      );
+    }
 
     String ticketKey(GatewayTicketItem item) {
       if (item.id > 0) return 'id:${item.id}';
@@ -33,7 +49,7 @@ class GatewayTicketPage extends HookConsumerWidget {
     }
 
     void keepVisible(GatewayTicketItem item, {Duration duration = const Duration(minutes: 10)}) {
-      localVisibleUntil.value = {...localVisibleUntil.value, ticketKey(item): DateTime.now().add(duration)};
+      persistVisibleUntil({...localVisibleUntil.value, ticketKey(item): DateTime.now().add(duration)});
     }
 
     List<GatewayTicketItem> mergeTickets(List<GatewayTicketItem> remote, List<GatewayTicketItem> local) {
@@ -62,20 +78,20 @@ class GatewayTicketPage extends HookConsumerWidget {
         final now = DateTime.now();
         final visibleMap = Map<String, DateTime>.from(localVisibleUntil.value)
           ..removeWhere((_, expireAt) => now.isAfter(expireAt));
-        localVisibleUntil.value = visibleMap;
+        persistVisibleUntil(visibleMap);
         final localRecent = tickets.value.where((item) {
           final expireAt = visibleMap[ticketKey(item)];
           return expireAt != null && expireAt.isAfter(now);
         }).toList();
         if (remote.isNotEmpty) {
-          final nextVisibleMap = Map<String, DateTime>.from(localVisibleUntil.value);
+          final nextVisibleMap = Map<String, DateTime>.from(visibleMap);
           final expireAt = DateTime.now().add(const Duration(minutes: 2));
           for (final item in remote) {
             nextVisibleMap[ticketKey(item)] = expireAt;
           }
-          localVisibleUntil.value = nextVisibleMap;
+          persistVisibleUntil(nextVisibleMap);
         }
-        tickets.value = mergeTickets(remote, localRecent);
+        persistTickets(mergeTickets(remote, localRecent));
       } on GatewayApiException catch (e) {
         error.value = e.message;
       } catch (_) {
@@ -119,7 +135,7 @@ class GatewayTicketPage extends HookConsumerWidget {
               Navigator.pop(sheetContext);
               if (updated != null) {
                 keepVisible(updated);
-                tickets.value = [updated, ...tickets.value.where((item) => item.id != updated.id)];
+                persistTickets([updated, ...tickets.value.where((item) => item.id != updated.id)]);
               } else {
                 await load();
               }
@@ -141,27 +157,29 @@ class GatewayTicketPage extends HookConsumerWidget {
             try {
               await ref.read(slothGatewayPortalControllerProvider).closeTicket(ticket.id);
               final nowIso = DateTime.now().toIso8601String();
-              tickets.value = tickets.value
-                  .map(
-                    (item) => item.id == ticket.id
-                        ? GatewayTicketItem(
-                            id: item.id,
-                            subject: item.subject,
-                            level: item.level,
-                            levelLabel: item.levelLabel,
-                            statusCode: 1,
-                            status: 'closed',
-                            replyStatus: item.replyStatus,
-                            replyStatusLabel: item.replyStatusLabel,
-                            canReply: false,
-                            canClose: false,
-                            messages: item.messages,
-                            createdAt: item.createdAt,
-                            updatedAt: nowIso,
-                          )
-                        : item,
-                  )
-                  .toList();
+              persistTickets(
+                tickets.value
+                    .map(
+                      (item) => item.id == ticket.id
+                          ? GatewayTicketItem(
+                              id: item.id,
+                              subject: item.subject,
+                              level: item.level,
+                              levelLabel: item.levelLabel,
+                              statusCode: 1,
+                              status: 'closed',
+                              replyStatus: item.replyStatus,
+                              replyStatusLabel: item.replyStatusLabel,
+                              canReply: false,
+                              canClose: false,
+                              messages: item.messages,
+                              createdAt: item.createdAt,
+                              updatedAt: nowIso,
+                            )
+                          : item,
+                    )
+                    .toList(),
+              );
               final closed = tickets.value.firstWhere((item) => item.id == ticket.id, orElse: () => ticket);
               keepVisible(closed);
               if (!sheetContext.mounted) return;
@@ -332,7 +350,7 @@ class GatewayTicketPage extends HookConsumerWidget {
 
         if (created != null) {
           keepVisible(created);
-          tickets.value = [created, ...tickets.value.where((item) => item.id != created.id)];
+          persistTickets([created, ...tickets.value.where((item) => item.id != created.id)]);
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(isZh ? '工单已提交，已加入会话列表' : 'Ticket submitted')));

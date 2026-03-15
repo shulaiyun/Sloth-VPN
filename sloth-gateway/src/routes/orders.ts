@@ -231,14 +231,43 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "plan_id and period are required");
     }
 
-    const orderNo = await deps.xboard
-      .createOrder({
+    let orderNo = "";
+    try {
+      orderNo = await deps.xboard.createOrder({
         authData: session.xboardAuthData,
         planId,
         period,
         couponCode: typeof body.coupon_code === "string" ? body.coupon_code : undefined,
-      })
-      .catch((err): never => mapUpstreamOrderError(err));
+      });
+    } catch (err) {
+      try {
+        mapUpstreamOrderError(err);
+      } catch (mapped) {
+        if (
+          mapped instanceof AppError &&
+          (mapped.code === ErrorCodes.ORDER_PENDING_EXISTS || mapped.code === ErrorCodes.ORDER_WAITING_EFFECTIVE)
+        ) {
+          const rawOrders = await deps.xboard.getOrders(session.xboardAuthData).catch(() => []);
+          const normalizedOrders = Array.isArray(rawOrders) ? rawOrders.map(normalizeOrder) : [];
+          const pendingLike = normalizedOrders.find(
+            (item) => item.status === "pending" || item.status === "processing",
+          );
+          throw new AppError(
+            mapped.statusCode ?? 409,
+            mapped.code,
+            mapped.message,
+            pendingLike
+              ? {
+                  ...(mapped.details ?? {}),
+                  existing_order_no: pendingLike.order_no,
+                  existing_order_status: pendingLike.status,
+                }
+              : mapped.details,
+          );
+        }
+        throw mapped;
+      }
+    }
 
     return ok(reply, {
       order_no: orderNo,
