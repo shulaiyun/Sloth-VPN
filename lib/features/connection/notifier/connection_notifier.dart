@@ -24,6 +24,7 @@ part 'connection_notifier.g.dart';
 
 @Riverpod(keepAlive: true)
 class ConnectionNotifier extends _$ConnectionNotifier with AppLogger {
+  bool _vpnPermissionRetrying = false;
   @override
   Stream<ConnectionStatus> build() async* {
     if (Platform.isIOS) {
@@ -48,10 +49,7 @@ class ConnectionNotifier extends _$ConnectionNotifier with AppLogger {
           unawaited(
             Future<void>.delayed(const Duration(seconds: 2), () async {
               final result = await ref.read(proxyRepositoryProvider).urlTest("").run();
-              result.match(
-                (err) => loggy.debug("auto url-test failed: $err"),
-                (_) {},
-              );
+              result.match((err) => loggy.debug("auto url-test failed: $err"), (_) {});
             }),
           );
         }
@@ -153,21 +151,32 @@ class ConnectionNotifier extends _$ConnectionNotifier with AppLogger {
       loggy.info("no active profile, not connecting");
       return;
     }
-    await _connectionRepo.connect(activeProfile, ref.read(Preferences.disableMemoryLimit)).mapLeft((
-      ConnectionFailure err,
-    ) async {
-      loggy.warning("error connecting", err);
-      //Go err is not normal object to see the go errors are string and need to be dumped
-      await ref
-          .read(dialogNotifierProvider.notifier)
-          .showCustomAlertFromErr(err.present(ref.read(translationsProvider).requireValue));
-      loggy.warning(err);
-      if (err.toString().contains("panic")) {
-        await Sentry.captureException(Exception(err.toString()));
+    final disableMemoryLimit = ref.read(Preferences.disableMemoryLimit);
+    final firstAttempt = await _connectionRepo.connect(activeProfile, disableMemoryLimit).run();
+    await firstAttempt.match((err) async {
+      if (Platform.isAndroid && err is MissingVpnPermission && !_vpnPermissionRetrying) {
+        _vpnPermissionRetrying = true;
+        loggy.info("vpn permission race detected, retrying connect once");
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+        final retryAttempt = await _connectionRepo.connect(activeProfile, disableMemoryLimit).run();
+        _vpnPermissionRetrying = false;
+        await retryAttempt.match(_handleConnectFailure, (_) => Future.value());
+        return;
       }
-      await ref.read(Preferences.startedByUser.notifier).update(false);
-      state = AsyncError(err, StackTrace.current);
-    }).run();
+      await _handleConnectFailure(err);
+    }, (_) => Future.value());
+  }
+
+  Future<void> _handleConnectFailure(ConnectionFailure err) async {
+    loggy.warning("error connecting", err);
+    await ref
+        .read(dialogNotifierProvider.notifier)
+        .showCustomAlertFromErr(err.present(ref.read(translationsProvider).requireValue));
+    if (err.toString().contains("panic")) {
+      await Sentry.captureException(Exception(err.toString()));
+    }
+    await ref.read(Preferences.startedByUser.notifier).update(false);
+    state = AsyncError(err, StackTrace.current);
   }
 
   Future<void> _disconnect() async {

@@ -7,6 +7,7 @@ import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_portal_controller.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GatewayPlansPage extends HookConsumerWidget {
   const GatewayPlansPage({super.key});
@@ -40,6 +41,19 @@ class GatewayPlansPage extends HookConsumerWidget {
     final orderStatusFilter = useState<String>('all');
     final tabIndex = useState<int>(0);
     final errorText = useState<String?>(null);
+
+    void showTip(String message, {Duration duration = const Duration(seconds: 6)}) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: duration,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
 
     Future<void> load() async {
       loading.value = true;
@@ -98,24 +112,61 @@ class GatewayPlansPage extends HookConsumerWidget {
     Future<void> openPaymentTarget(String target, String orderNo) async {
       if (target.isEmpty) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.noPaymentUrl)));
+        showTip(g.noPaymentUrl);
         return;
       }
 
       final uri = Uri.tryParse(target);
       if (uri == null || !uri.hasScheme) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.paymentPayload(target))));
+        showTip(g.paymentPayload(target));
         return;
       }
 
+      // Payment providers often block embedded webviews; try in-app webview mode first.
+      try {
+        final openedInAppWebView = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        if (openedInAppWebView) {
+          if (!context.mounted) return;
+          showTip(isZh ? '支付窗口已打开，请完成支付后返回应用刷新状态' : 'Payment window opened, return to refresh status');
+          return;
+        }
+      } catch (_) {
+        // Try browser view below.
+      }
+
+      try {
+        final openedInAppBrowser = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+        if (openedInAppBrowser) {
+          if (!context.mounted) return;
+          showTip(isZh ? '支付窗口已打开，请完成支付后返回应用刷新状态' : 'Payment window opened, return to refresh status');
+          return;
+        }
+      } catch (_) {
+        // Fall back to embedded webview route below.
+      }
+
+      if (!context.mounted) return;
       await context.push(
         '/gateway-account/webview',
         extra: <String, String>{'url': target, 'title': isZh ? '支付订单 $orderNo' : 'Pay Order $orderNo'},
       );
 
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.paymentPageOpened(orderNo))));
+      showTip(g.paymentPageOpened(orderNo));
+    }
+
+    Future<bool> verifyCompletedAndSync(String orderNo) async {
+      final portal = ref.read(slothGatewayPortalControllerProvider);
+      for (final delay in const [Duration(milliseconds: 400), Duration(milliseconds: 1200)]) {
+        await Future.delayed(delay);
+        final status = await portal.orderStatus(orderNo);
+        if (status.isCompleted) {
+          await syncAfterSuccess();
+          return true;
+        }
+      }
+      return false;
     }
 
     Future<void> showOrderDetail(GatewayOrderItem baseOrder) async {
@@ -176,7 +227,7 @@ class GatewayPlansPage extends HookConsumerWidget {
 
     Future<void> continuePay(GatewayOrderItem order) async {
       if (selectedMethodId.value == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.selectPeriodAndPayment)));
+        showTip(g.selectPeriodAndPayment);
         return;
       }
       runningOrderNo.value = order.orderNo;
@@ -184,15 +235,21 @@ class GatewayPlansPage extends HookConsumerWidget {
         final portal = ref.read(slothGatewayPortalControllerProvider);
         final payment = await portal.payOrder(orderNo: order.orderNo, paymentMethodId: selectedMethodId.value!);
         if (payment.completed) {
-          await syncAfterSuccess();
+          final confirmed = await verifyCompletedAndSync(order.orderNo);
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.orderCompletedAndSynced)));
-          return;
+          if (confirmed) {
+            showTip(g.orderCompletedAndSynced);
+            return;
+          }
+          showTip(isZh ? '支付结果确认中，请稍后点“刷新状态”' : 'Payment is being confirmed, please refresh status');
         }
-        await openPaymentTarget(payment.paymentUrl ?? payment.paymentData, order.orderNo);
+        final paymentTarget = (payment.paymentUrl ?? payment.paymentData).trim();
+        if (paymentTarget.isNotEmpty) {
+          await openPaymentTarget(paymentTarget, order.orderNo);
+        }
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.orderFailed(error.message))));
+        showTip(g.orderFailed(error.message));
       } finally {
         runningOrderNo.value = null;
       }
@@ -209,12 +266,10 @@ class GatewayPlansPage extends HookConsumerWidget {
           await load();
         }
         if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(g.orderStatusUpdated(order.orderNo, status.status))));
+        showTip(g.orderStatusUpdated(order.orderNo, status.status));
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.orderFailed(error.message))));
+        showTip(g.orderFailed(error.message));
       } finally {
         runningOrderNo.value = null;
       }
@@ -226,9 +281,7 @@ class GatewayPlansPage extends HookConsumerWidget {
         final portal = ref.read(slothGatewayPortalControllerProvider);
         final ok = await portal.cancelOrder(order.orderNo);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(ok ? g.orderCancelled : g.cancelOrderFailed(g.unknownError))));
+        showTip(ok ? g.orderCancelled : g.cancelOrderFailed(g.unknownError));
         await load();
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
@@ -236,9 +289,9 @@ class GatewayPlansPage extends HookConsumerWidget {
         if (code == 'ORDER_NOT_CANCELLABLE' || code == 'ORDER_ALREADY_PAID') {
           await load();
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+          showTip(error.message);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.cancelOrderFailed(error.message))));
+          showTip(g.cancelOrderFailed(error.message));
         }
       } finally {
         runningOrderNo.value = null;
@@ -284,7 +337,7 @@ class GatewayPlansPage extends HookConsumerWidget {
       final methodId = selectedMethodId.value;
       final period = selectedPeriods.value[plan.id];
       if (methodId == null || period == null || period.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.selectPeriodAndPayment)));
+        showTip(g.selectPeriodAndPayment);
         return;
       }
       final confirmed = await confirmBeforeBuy(plan, period);
@@ -298,30 +351,33 @@ class GatewayPlansPage extends HookConsumerWidget {
 
         final preview = await portal.orderDetail(orderNo);
         if (preview != null && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${g.orderAmount} ${_presentPrice(preview.totalAmount)} / ${g.orderSurplusAmount} ${_presentPrice(preview.surplusAmount)} / ${g.orderRefundAmount} ${_presentPrice(preview.refundAmount)}',
-              ),
-            ),
+          showTip(
+            '${g.orderAmount} ${_presentPrice(preview.totalAmount)} / ${g.orderSurplusAmount} ${_presentPrice(preview.surplusAmount)} / ${g.orderRefundAmount} ${_presentPrice(preview.refundAmount)}',
+            duration: const Duration(seconds: 7),
           );
         }
 
         final payment = await portal.payOrder(orderNo: orderNo, paymentMethodId: methodId);
         if (payment.completed) {
-          await syncAfterSuccess();
+          final confirmed = await verifyCompletedAndSync(orderNo);
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.orderCompletedAndSynced)));
-          tabIndex.value = 1;
-          return;
+          if (confirmed) {
+            showTip(g.orderCompletedAndSynced);
+            tabIndex.value = 1;
+            return;
+          }
+          showTip(isZh ? '支付结果确认中，请稍后点“刷新状态”' : 'Payment is being confirmed, please refresh status');
         }
 
-        await openPaymentTarget(payment.paymentUrl ?? payment.paymentData, orderNo);
+        final paymentTarget = (payment.paymentUrl ?? payment.paymentData).trim();
+        if (paymentTarget.isNotEmpty) {
+          await openPaymentTarget(paymentTarget, orderNo);
+        }
         tabIndex.value = 1;
         await load();
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.orderFailed(error.message))));
+        showTip(g.orderFailed(error.message));
       } finally {
         runningPlanId.value = null;
       }

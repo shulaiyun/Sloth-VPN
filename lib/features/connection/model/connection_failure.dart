@@ -13,7 +13,7 @@ String? _normalizeUnexpectedConnectivityMessage(Object? error) {
   if (text.contains("tun permission denied") ||
       text.contains("vpn permission denied") ||
       (text.contains("permission denied") && text.contains("tun"))) {
-    return "请先在系统中授予 VPN/TUN 权限后再连接。可在系统设置 > VPN > 树懒VPN 中允许连接。";
+    return "需要系统授权才能连接。请先在系统弹窗中点击允许；若未弹窗，请到 设置 > VPN > 树懒VPN 开启后重试。";
   }
 
   if (text.contains("failed to start background core") ||

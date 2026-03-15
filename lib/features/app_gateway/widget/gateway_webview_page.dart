@@ -26,7 +26,7 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
       ..setUserAgent(
-        'Mozilla/5.0 (Linux; Android 13; SlothVPN) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
       )
       ..setNavigationDelegate(
         NavigationDelegate(
@@ -70,7 +70,10 @@ class _GatewayWebViewPageState extends State<GatewayWebViewPage> {
   Future<void> _openExternal() async {
     final uri = Uri.tryParse(widget.url);
     if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final openedInApp = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    if (!openedInApp) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override

@@ -49,7 +49,14 @@ class GatewayTicketPage extends HookConsumerWidget {
       error.value = null;
       try {
         final remote = await ref.read(slothGatewayPortalControllerProvider).fetchTickets();
-        tickets.value = mergeTickets(remote, tickets.value.where((item) => item.id <= 0).toList());
+        final now = DateTime.now();
+        final localRecent = tickets.value.where((item) {
+          if (item.id <= 0) return true;
+          final updatedAt = DateTime.tryParse(item.updatedAt ?? item.createdAt ?? "");
+          if (updatedAt == null) return false;
+          return now.difference(updatedAt).inSeconds <= 180;
+        }).toList();
+        tickets.value = mergeTickets(remote, localRecent);
       } on GatewayApiException catch (e) {
         error.value = e.message;
       } catch (_) {
@@ -113,9 +120,35 @@ class GatewayTicketPage extends HookConsumerWidget {
             }
             try {
               await ref.read(slothGatewayPortalControllerProvider).closeTicket(ticket.id);
+              final nowIso = DateTime.now().toIso8601String();
+              tickets.value = tickets.value
+                  .map(
+                    (item) => item.id == ticket.id
+                        ? GatewayTicketItem(
+                            id: item.id,
+                            subject: item.subject,
+                            level: item.level,
+                            levelLabel: item.levelLabel,
+                            statusCode: 1,
+                            status: 'closed',
+                            replyStatus: item.replyStatus,
+                            replyStatusLabel: item.replyStatusLabel,
+                            canReply: false,
+                            canClose: false,
+                            messages: item.messages,
+                            createdAt: item.createdAt,
+                            updatedAt: nowIso,
+                          )
+                        : item,
+                  )
+                  .toList();
               if (!sheetContext.mounted) return;
               Navigator.pop(sheetContext);
               await load();
+              await Future.delayed(const Duration(milliseconds: 900));
+              if (context.mounted) {
+                await load();
+              }
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isZh ? '工单已关闭' : 'Ticket closed')));
             } on GatewayApiException catch (e) {
@@ -289,7 +322,11 @@ class GatewayTicketPage extends HookConsumerWidget {
           ).showSnackBar(SnackBar(content: Text(isZh ? '工单已提交，正在刷新列表' : 'Ticket submitted, refreshing list')));
         }
 
-        Future.delayed(const Duration(milliseconds: 700), () async {
+        Future.delayed(const Duration(seconds: 2), () async {
+          if (!context.mounted) return;
+          await load();
+        });
+        Future.delayed(const Duration(seconds: 6), () async {
           if (!context.mounted) return;
           await load();
         });

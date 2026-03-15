@@ -480,8 +480,8 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 if (_loggedIn)
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: theme.colorScheme.tertiaryContainer,
-                      foregroundColor: theme.colorScheme.onTertiaryContainer,
+                      backgroundColor: const Color(0xFFF7B7D2),
+                      foregroundColor: const Color(0xFF4A1F35),
                     ),
                     onPressed: () => context.go("/gateway-account"),
                     child: Text(g.myAccount),
@@ -565,50 +565,37 @@ class _TrafficMiniStatusTile extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Stack(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              color: tileBgColor,
-              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: isLight ? 0.6 : 0.25)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: tileBgColor,
+          border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: isLight ? 0.6 : 0.25)),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: safeRate,
+                child: ColoredBox(color: fillColor),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: theme.textTheme.labelSmall),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: theme.textTheme.labelSmall?.copyWith(color: labelColor)),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: textColor),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned.fill(
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: safeRate,
-              child: ColoredBox(color: fillColor),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: theme.textTheme.labelSmall?.copyWith(color: labelColor)),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: textColor),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

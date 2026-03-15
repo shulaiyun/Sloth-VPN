@@ -82,6 +82,26 @@ const normalizeTicket = (raw: Record<string, unknown>) => {
   };
 };
 
+const pickMostRecentTicket = (tickets: Array<Record<string, unknown>>): Record<string, unknown> | undefined => {
+  if (tickets.length === 0) return undefined;
+  const sorted = [...tickets];
+  sorted.sort((a, b) => {
+    const idA = toNumber(a.id);
+    const idB = toNumber(b.id);
+    if (idA !== idB) return idB - idA;
+    const aUpdated = toText(a.updated_at);
+    const bUpdated = toText(b.updated_at);
+    const aCreated = toText(a.created_at);
+    const bCreated = toText(b.created_at);
+    const atA = Date.parse(aUpdated || aCreated);
+    const atB = Date.parse(bUpdated || bCreated);
+    const msA = Number.isFinite(atA) ? atA : 0;
+    const msB = Number.isFinite(atB) ? atB : 0;
+    return msB - msA;
+  });
+  return sorted[0];
+};
+
 const mapTicketError = (error: unknown): never => {
   if (!(error instanceof AppError)) throw error;
   if (error.code !== ErrorCodes.UPSTREAM_ERROR) throw error;
@@ -185,9 +205,7 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
     let createdTicket =
       created.ticketId != null
         ? tickets.find((item) => toNumber(item.id) === created.ticketId || toNumber(item.ticket_id) === created.ticketId)
-        : undefined;
-
-    createdTicket ??= tickets.find((item) => toText(item.subject) === subject);
+        : pickMostRecentTicket(tickets);
 
     // Some XBoard deployments create ticket asynchronously. Poll briefly to get the real ticket id for immediate chat.
     if (!createdTicket) {
@@ -202,7 +220,7 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
                 (item) =>
                   toNumber(item.id) === created.ticketId || toNumber(item.ticket_id) === created.ticketId,
               )
-            : undefined) ?? tickets.find((item) => toText(item.subject) === subject);
+            : undefined) ?? pickMostRecentTicket(tickets);
         if (createdTicket) break;
       }
     }
@@ -272,8 +290,23 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
     await deps.xboard
       .closeTicket({ authData: session.xboardAuthData, id })
       .catch((error: unknown): never => mapTicketError(error));
+    let detail = await deps.xboard
+      .getTicketDetail(session.xboardAuthData, id)
+      .catch(() => null);
+    if (detail != null && toNumber(detail.status) != 1) {
+      for (const delayMs of [300, 700, 1200]) {
+        await sleep(delayMs);
+        detail = await deps.xboard
+          .getTicketDetail(session.xboardAuthData, id)
+          .catch(() => null);
+        if (detail != null && toNumber(detail.status) == 1) {
+          break;
+        }
+      }
+    }
     return ok(reply, {
       closed: true,
+      ticket: detail == null ? null : normalizeTicket(detail),
       closed_at: new Date().toISOString(),
     });
   });
