@@ -293,6 +293,8 @@ class GatewayPlansPage extends HookConsumerWidget {
                 kv(g.orderType, order.typeLabel.isEmpty ? order.type : order.typeLabel),
                 kv(isZh ? 'Status' : 'Status', g.orderStatusLabel(order.status)),
                 kv(isZh ? '鍛ㄦ湡' : 'Period', g.periodLabel(order.period ?? '', order.period ?? '-')),
+                if (order.planTransferEnable != null && (order.planTransferEnable ?? 0) > 0)
+                  kv(g.planTraffic, _presentTraffic(order.planTransferEnable!)),
                 kv(g.orderAmount, _presentPrice(order.totalAmount)),
                 kv(g.orderBalanceAmount, _presentPrice(order.balanceAmount)),
                 kv(g.orderDiscountAmount, _presentPrice(order.discountAmount)),
@@ -781,6 +783,8 @@ class GatewayPlansPage extends HookConsumerWidget {
                       Text('${isZh ? 'Order' : 'Order'}: ${order.orderNo}'),
                       Text('${g.orderType}: ${order.typeLabel.isEmpty ? order.type : order.typeLabel}'),
                       Text('${isZh ? '鍛ㄦ湡' : 'Period'}: ${g.periodLabel(order.period ?? '', order.period ?? '-')}'),
+                      if (order.planTransferEnable != null && (order.planTransferEnable ?? 0) > 0)
+                        Text('${g.planTraffic}: ${_presentTraffic(order.planTransferEnable!)}'),
                       Text('${g.orderAmount}: ${_presentPrice(order.totalAmount)}'),
                       Text('${g.orderSurplusAmount}: ${_presentPrice(order.surplusAmount)}'),
                       Text('${g.orderRefundAmount}: ${_presentPrice(order.refundAmount)}'),

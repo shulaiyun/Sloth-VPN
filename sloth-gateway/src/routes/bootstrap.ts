@@ -7,6 +7,7 @@ import type { XboardAdapter } from "../adapter/xboard-adapter";
 import { signPullToken } from "../utils/jwt";
 import { ok } from "../utils/response";
 import { toIsoTimeOrNull } from "../utils/time";
+import { normalizeTrafficSummary } from "../utils/traffic";
 
 type BootstrapDeps = {
   sessions: SessionStore;
@@ -43,6 +44,12 @@ const buildAccountSummary = async (
     }
   }
 
+  const trafficSummary = normalizeTrafficSummary(
+    subscribe?.transfer_enable ?? user.transfer_enable ?? 0,
+    subscribe ? (subscribe.u ?? 0) + (subscribe.d ?? 0) : 0,
+    config.xboardTrafficUnit,
+  );
+
   const pullToken = signPullToken(sid);
   const pullUrl = `${config.publicBaseUrl}/api/app/v1/subscription/pull?token=${encodeURIComponent(pullToken)}`;
   const ticketUrl = config.defaultTicketUrl || `${config.xboardBaseUrl}/#/ticket`;
@@ -54,8 +61,11 @@ const buildAccountSummary = async (
       email: user.email,
       plan_name: resolvedPlanName,
       expired_at: toIsoTimeOrNull(subscribe?.expired_at ?? user.expired_at ?? null),
-      traffic_used: subscribe ? (subscribe.u ?? 0) + (subscribe.d ?? 0) : 0,
-      traffic_total: subscribe?.transfer_enable ?? user.transfer_enable ?? 0,
+      traffic_used: trafficSummary.usedBytes,
+      traffic_total: trafficSummary.totalBytes,
+      traffic_unit_detected: trafficSummary.unit,
+      traffic_used_raw: trafficSummary.usedRaw,
+      traffic_total_raw: trafficSummary.totalRaw,
       balance: user.balance ?? 0,
       telegram_bound: user.telegram_id != null || String(user.telegram_username ?? "").trim().length > 0,
       telegram_username: String(user.telegram_username ?? "").trim() || null,

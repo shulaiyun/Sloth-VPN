@@ -139,6 +139,7 @@ class GatewayOrderItem {
     required this.totalAmount,
     this.planId,
     this.planName,
+    this.planTransferEnable,
     this.period,
     this.createdAt,
     this.updatedAt,
@@ -160,6 +161,7 @@ class GatewayOrderItem {
   final int totalAmount;
   final int? planId;
   final String? planName;
+  final int? planTransferEnable;
   final String? period;
   final String? createdAt;
   final String? updatedAt;
@@ -185,6 +187,7 @@ class GatewayOrderItem {
       totalAmount: _asInt(map["total_amount"]),
       planId: map["plan_id"] == null ? null : _asInt(map["plan_id"]),
       planName: _asNullableString(map["plan_name"]),
+      planTransferEnable: map["plan_transfer_enable"] == null ? null : _asInt(map["plan_transfer_enable"]),
       period: _asNullableString(map["period"]),
       createdAt: _asNullableString(map["created_at"]),
       updatedAt: _asNullableString(map["updated_at"]),

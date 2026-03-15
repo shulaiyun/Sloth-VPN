@@ -1,10 +1,12 @@
 ﻿import type { FastifyInstance } from "fastify";
 import type { XboardAdapter } from "../adapter/xboard-adapter";
+import { config } from "../config";
 import { AppError, ErrorCodes } from "../errors";
 import { requireSession } from "../plugins/auth";
 import type { SessionStore } from "../store/session-store";
 import { ok } from "../utils/response";
 import { toIsoTimeOrNull } from "../utils/time";
+import { normalizeTrafficQuota } from "../utils/traffic";
 
 type OrderDeps = {
   sessions: SessionStore;
@@ -61,6 +63,10 @@ const normalizeOrder = (raw: Record<string, unknown>) => {
   const typeCode = parseNumber(raw.type);
   const mappedType = mapOrderType(typeCode);
   const rawPlan = typeof raw.plan === "object" && raw.plan !== null ? (raw.plan as Record<string, unknown>) : null;
+  const planTraffic = normalizeTrafficQuota(
+    raw.plan_transfer_enable ?? rawPlan?.transfer_enable ?? raw.transfer_enable ?? 0,
+    config.xboardTrafficUnit,
+  );
 
   return {
     order_no: orderNo,
@@ -76,6 +82,9 @@ const normalizeOrder = (raw: Record<string, unknown>) => {
     refund_amount: parseNumber(raw.refund_amount),
     plan_id: parseNumber(raw.plan_id),
     plan_name: String(raw.plan_name ?? rawPlan?.name ?? "").trim(),
+    plan_transfer_enable: planTraffic.bytes,
+    plan_transfer_enable_raw: planTraffic.raw,
+    plan_transfer_unit_detected: planTraffic.unit,
     period: String(raw.period ?? raw.billing_cycle ?? "").trim(),
     type_code: typeCode,
     type: mappedType.key,

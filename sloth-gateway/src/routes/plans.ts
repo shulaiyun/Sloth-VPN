@@ -1,8 +1,10 @@
 ﻿import type { FastifyInstance } from "fastify";
 import type { XboardAdapter } from "../adapter/xboard-adapter";
+import { config } from "../config";
 import { requireSession } from "../plugins/auth";
 import type { SessionStore } from "../store/session-store";
 import { ok } from "../utils/response";
+import { normalizeTrafficQuota } from "../utils/traffic";
 
 type PlanDeps = {
   sessions: SessionStore;
@@ -48,11 +50,14 @@ export const registerPlanRoutes = (app: FastifyInstance, deps: PlanDeps): void =
           .filter((item): item is { code: string; label: string; price: number } => item !== null);
 
         const tags = Array.isArray(plan.tags) ? plan.tags.map((t) => String(t)) : [];
+        const traffic = normalizeTrafficQuota(plan.transfer_enable, config.xboardTrafficUnit);
         return {
           id: Number(plan.id ?? 0),
           name: String(plan.name ?? ""),
           description: plan.content == null ? "" : String(plan.content),
-          transfer_enable: Number(plan.transfer_enable ?? 0),
+          transfer_enable: traffic.bytes,
+          transfer_enable_raw: traffic.raw,
+          transfer_unit_detected: traffic.unit,
           speed_limit: plan.speed_limit == null ? null : Number(plan.speed_limit),
           device_limit: plan.device_limit == null ? null : Number(plan.device_limit),
           renewable: plan.renew == null ? true : plan.renew === true || String(plan.renew) === "1",

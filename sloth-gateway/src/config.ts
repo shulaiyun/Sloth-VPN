@@ -34,6 +34,7 @@ export const config = {
   xboardBaseUrl: normalizeBaseUrl(process.env.XBOARD_BASE_URL, "http://127.0.0.1"),
   xboardWebBaseUrl: normalizeBaseUrl(process.env.XBOARD_WEB_BASE_URL ?? process.env.XBOARD_BASE_URL, "http://127.0.0.1"),
   xboardTimeoutMs: num(process.env.XBOARD_TIMEOUT_MS, 15000),
+  xboardTrafficUnit: (process.env.XBOARD_TRAFFIC_UNIT ?? "auto").trim().toLowerCase(),
   defaultTelegramUrl: process.env.DEFAULT_TELEGRAM_URL ?? "https://t.me/shulai2026",
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "shulaiyun_bot",
   telegramBotUrl: process.env.TELEGRAM_BOT_URL ?? "https://t.me/shulaiyun_bot",
