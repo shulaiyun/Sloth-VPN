@@ -169,6 +169,17 @@ const mapUpstreamOrderError = (error: unknown): never => {
   }
 
   if (
+    isCheckout &&
+    containsAny(text, ["商户订单号已存在", "merchant order already exists", "order no exists", "duplicate order"])
+  ) {
+    throw new AppError(
+      409,
+      ErrorCodes.ORDER_PAYMENT_CHANNEL_EXPIRED,
+      "该订单支付通道已失效，请关闭当前订单并重建后再支付",
+    );
+  }
+
+  if (
     (isCancel && status === 400) ||
     containsAny(text, ["cannot cancel", "不可取消", "不能取消", "已取消", "already cancelled", "already canceled"])
   ) {

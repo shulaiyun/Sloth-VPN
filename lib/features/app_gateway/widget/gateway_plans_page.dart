@@ -87,6 +87,11 @@ class GatewayPlansPage extends HookConsumerWidget {
       );
     }
 
+    String? existingOrderNoFromError(GatewayApiException error) {
+      final value = error.details?['existing_order_no']?.toString().trim() ?? '';
+      return value.isEmpty ? null : value;
+    }
+
     Future<void> load() async {
       loading.value = true;
       errorText.value = null;
@@ -343,6 +348,13 @@ class GatewayPlansPage extends HookConsumerWidget {
           showTip(error.message, duration: const Duration(seconds: 8));
           return;
         }
+        if (error.code == 'ORDER_PAYMENT_CHANNEL_EXPIRED') {
+          showTip(
+            isZh ? '支付通道已失效，请使用“关闭并重建”后再支付' : 'Payment channel expired, recreate order first',
+            duration: const Duration(seconds: 8),
+          );
+          return;
+        }
         showTip(g.orderFailed(error.message));
       } finally {
         runningOrderNo.value = null;
@@ -387,6 +399,57 @@ class GatewayPlansPage extends HookConsumerWidget {
         } else {
           showTip(g.cancelOrderFailed(error.message));
         }
+      } finally {
+        runningOrderNo.value = null;
+      }
+    }
+
+    Future<void> closeAndRecreateOrder(GatewayOrderItem order) async {
+      if (selectedMethodId.value == null) {
+        showTip(g.selectPeriodAndPayment);
+        return;
+      }
+      final period = order.period?.trim() ?? '';
+      final planId = order.planId;
+      if (planId == null || planId <= 0 || period.isEmpty) {
+        showTip(isZh ? '该订单缺少套餐信息，无法重建' : 'Order missing plan data, cannot recreate');
+        return;
+      }
+      runningOrderNo.value = order.orderNo;
+      try {
+        final portal = ref.read(slothGatewayPortalControllerProvider);
+        if (order.canCancel) {
+          await portal.cancelOrder(order.orderNo);
+        }
+        final rebuiltOrderNo = await portal.createOrder(planId: planId, period: period);
+        if (rebuiltOrderNo.isEmpty) {
+          throw GatewayApiException(message: g.unknownError);
+        }
+        final payment = await portal.payOrder(orderNo: rebuiltOrderNo, paymentMethodId: selectedMethodId.value!);
+        if (payment.completed) {
+          final confirmed = await verifyCompletedAndSync(rebuiltOrderNo);
+          if (confirmed) {
+            showTip(g.orderCompletedAndSynced, duration: const Duration(seconds: 8));
+          } else {
+            showTip(
+              isZh ? '订单已重建，支付结果确认中，请稍后刷新状态' : 'Order recreated, payment confirmation pending',
+              duration: const Duration(seconds: 8),
+            );
+          }
+        } else {
+          final paymentTarget = (payment.paymentUrl ?? payment.paymentData).trim();
+          if (paymentTarget.isNotEmpty) {
+            await openPaymentTarget(paymentTarget, rebuiltOrderNo);
+          } else {
+            showTip(g.noPaymentUrl);
+          }
+        }
+        tabIndex.value = 1;
+        orderStatusFilter.value = 'pending';
+        await load();
+      } on GatewayApiException catch (error) {
+        if (!context.mounted) return;
+        showTip(error.message, duration: const Duration(seconds: 8));
       } finally {
         runningOrderNo.value = null;
       }
@@ -478,7 +541,9 @@ class GatewayPlansPage extends HookConsumerWidget {
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         if (error.code == 'ORDER_PENDING_EXISTS' || error.code == 'ORDER_WAITING_EFFECTIVE') {
-          showOrderConflictWithAction(error.message);
+          final existingOrderNo = existingOrderNoFromError(error);
+          final tip = existingOrderNo == null ? error.message : '${error.message} (${existingOrderNo})';
+          showOrderConflictWithAction(tip);
           return;
         }
         showTip(g.orderFailed(error.message));
@@ -715,6 +780,11 @@ class GatewayPlansPage extends HookConsumerWidget {
                               onPressed: busy ? null : () => cancelOrder(order),
                               child: Text(g.cancelOrder),
                             ),
+                          if (order.isPayable && order.canCancel)
+                            OutlinedButton(
+                              onPressed: busy ? null : () => closeAndRecreateOrder(order),
+                              child: Text(isZh ? '关闭并重建' : 'Recreate Order'),
+                            ),
                           OutlinedButton(
                             onPressed: busy ? null : () => refreshOrderStatus(order),
                             child: Text(g.refreshOrderStatus),
@@ -749,12 +819,36 @@ class GatewayPlansPage extends HookConsumerWidget {
         ],
       );
     } else if (errorText.value != null) {
+      final errorLower = errorText.value?.toLowerCase() ?? '';
+      final authExpired =
+          (errorText.value?.contains('登录状态已失效') ?? false) ||
+          errorLower.contains('unauthorized') ||
+          errorLower.contains('session') ||
+          errorLower.contains('invalid access token') ||
+          errorLower.contains('token expired');
       body = ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(g.loadPlansFailed(errorText.value!)),
           const SizedBox(height: 8),
           FilledButton(onPressed: load, child: Text(g.retry)),
+          if (authExpired) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => context.push('/home/gateway-login'),
+              child: Text(isZh ? '重新登录' : 'Login Again'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () async {
+                await ref.read(slothGatewayPortalControllerProvider).logout();
+                if (!context.mounted) return;
+                showTip(isZh ? '已退出登录' : 'Logged out');
+                await load();
+              },
+              child: Text(isZh ? '退出登录' : 'Logout'),
+            ),
+          ],
         ],
       );
     } else {

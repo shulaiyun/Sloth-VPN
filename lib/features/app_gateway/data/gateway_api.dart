@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:hiddify/core/model/constants.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
@@ -139,6 +139,8 @@ class SlothGatewayApi with InfraLogger {
         return "您有待生效订单，请稍后再试";
       case "ORDER_ALREADY_PAID":
         return "该订单已支付，无需重复支付";
+      case "ORDER_PAYMENT_CHANNEL_EXPIRED":
+        return "该订单支付通道已失效，请关闭当前订单并重建后再支付";
       case "ORDER_NOT_CANCELLABLE":
         return "当前订单状态不可取消";
       case "TICKET_UNAVAILABLE":

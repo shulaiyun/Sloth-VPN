@@ -156,12 +156,37 @@ class ConnectionNotifier extends _$ConnectionNotifier with AppLogger {
     await firstAttempt.match((err) async {
       if (Platform.isAndroid && err is MissingVpnPermission && !_vpnPermissionRetrying) {
         _vpnPermissionRetrying = true;
-        loggy.info("vpn permission race detected, retrying connect once");
-        await Future<void>.delayed(const Duration(milliseconds: 1200));
-        final retryAttempt = await _connectionRepo.connect(activeProfile, disableMemoryLimit).run();
-        _vpnPermissionRetrying = false;
-        await retryAttempt.match(_handleConnectFailure, (_) => Future.value());
-        return;
+        try {
+          loggy.info("vpn permission race detected, retrying connect in background");
+          ConnectionFailure? lastPermissionError = err;
+          for (final wait in const [
+            Duration(milliseconds: 1200),
+            Duration(milliseconds: 2200),
+            Duration(milliseconds: 3200),
+          ]) {
+            await Future<void>.delayed(wait);
+            final retryAttempt = await _connectionRepo.connect(activeProfile, disableMemoryLimit).run();
+            var done = false;
+            await retryAttempt.match(
+              (retryErr) async {
+                if (retryErr is MissingVpnPermission) {
+                  lastPermissionError = retryErr;
+                  return;
+                }
+                done = true;
+                await _handleConnectFailure(retryErr);
+              },
+              (_) async {
+                done = true;
+              },
+            );
+            if (done) return;
+          }
+          await _handleConnectFailure(lastPermissionError ?? err);
+          return;
+        } finally {
+          _vpnPermissionRetrying = false;
+        }
       }
       await _handleConnectFailure(err);
     }, (_) => Future.value());

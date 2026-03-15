@@ -471,6 +471,30 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
               ),
             ] else ...[
               Text(g.homeGuide, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
+                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.campaign_outlined, size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isZh
+                            ? '新用户专享：注册后可在 App 内直接购买并自动同步节点'
+                            : 'New user offer: register and buy in-app with auto sync',
+                        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
             const SizedBox(height: 4),
             Wrap(
