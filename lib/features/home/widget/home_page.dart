@@ -21,6 +21,7 @@ import 'package:hiddify/features/profile/widget/profile_tile.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_delay_indicator.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
+import 'package:hiddify/features/proxy/active/ip_widget.dart';
 import 'package:hiddify/gen/assets.gen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -96,7 +97,8 @@ class HomePage extends HookConsumerWidget {
                 image: const DecorationImage(
                   image: AssetImage('assets/images/world_map.png'),
                   fit: BoxFit.cover,
-                  opacity: 0.08,
+                  alignment: Alignment(0.78, -0.35),
+                  opacity: 0.065,
                 ),
               ),
             ),
@@ -114,6 +116,7 @@ class HomePage extends HookConsumerWidget {
                         connected: connectionStatus.valueOrNull == const Connected(),
                         delay: delay,
                         activeNode: activeProxy?.tagDisplay ?? t.pages.proxies.empty,
+                        activeCountryCode: activeProxy?.ipinfo.countryCode,
                       ),
                     ),
                   ),
@@ -195,12 +198,21 @@ class _ConnectionHeaderCard extends StatelessWidget {
     required this.connected,
     required this.delay,
     required this.activeNode,
+    this.activeCountryCode,
   });
 
   final String title;
   final bool connected;
   final int delay;
   final String activeNode;
+  final String? activeCountryCode;
+
+  String _cleanNodeLabel(String value) {
+    final withoutRegionalFlags = value.replaceAll(RegExp(r'[\u{1F1E6}-\u{1F1FF}]{2}', unicode: true), '');
+    final withoutLeadingSymbols = withoutRegionalFlags.replaceAll(RegExp(r'^\s*[^\w\u4e00-\u9fa5]+\s*'), '');
+    final normalized = withoutLeadingSymbols.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return normalized.isEmpty ? value : normalized;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +273,14 @@ class _ConnectionHeaderCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _StatMini(icon: SlothIconType.server, label: isZh ? "节点" : "Node", value: activeNode),
+                child: _StatMini(
+                  icon: SlothIconType.server,
+                  label: isZh ? "节点" : "Node",
+                  value: _cleanNodeLabel(activeNode),
+                  leading: activeCountryCode == null || activeCountryCode!.trim().isEmpty
+                      ? null
+                      : IPCountryFlag(countryCode: activeCountryCode, size: 16),
+                ),
               ),
               const Gap(8),
               Expanded(
@@ -276,11 +295,12 @@ class _ConnectionHeaderCard extends StatelessWidget {
 }
 
 class _StatMini extends StatelessWidget {
-  const _StatMini({required this.icon, required this.label, required this.value});
+  const _StatMini({required this.icon, required this.label, required this.value, this.leading});
 
   final SlothIconType icon;
   final String label;
   final String value;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -297,11 +317,18 @@ class _StatMini extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: theme.textTheme.labelSmall?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    if (leading != null) ...[leading!, const Gap(4)],
+                    Expanded(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -477,19 +504,42 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
-                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
+                      theme.colorScheme.secondaryContainer.withValues(alpha: 0.72),
+                    ],
+                  ),
+                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.45)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.campaign_outlined, size: 18, color: theme.colorScheme.primary),
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                      ),
+                      child: Icon(Icons.campaign_rounded, size: 20, color: theme.colorScheme.primary),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         isZh
-                            ? '新用户专享：注册后可在 App 内直接购买并自动同步节点'
+                            ? '新用户专享：注册后免费送三天的使用时长，登录后会自动同步节点'
                             : 'New user offer: register and buy in-app with auto sync',
-                        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
                   ],

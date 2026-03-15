@@ -12,6 +12,7 @@ class GatewayLoginPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
+    final theme = Theme.of(context);
     final emailController = useTextEditingController();
     final passwordController = useTextEditingController();
     final isLoading = useState(false);
@@ -41,32 +42,85 @@ class GatewayLoginPage extends HookConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(g.loginTitle)),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Icon(Icons.verified_user_rounded, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(g.loginTitle),
+          ],
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(g.loginSubtitle),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.72),
+                ],
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.18),
+                  ),
+                  child: Icon(Icons.login_rounded, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    g.loginSubtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(labelText: g.emailLabel, border: const OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: g.emailLabel,
+              prefixIcon: const Icon(Icons.alternate_email_rounded),
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: passwordController,
             obscureText: true,
-            decoration: InputDecoration(labelText: g.passwordLabel, border: const OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: g.passwordLabel,
+              prefixIcon: const Icon(Icons.lock_rounded),
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 16),
-          FilledButton(
+          FilledButton.icon(
             onPressed: isLoading.value ? null : submit,
-            child: Text(isLoading.value ? g.loggingIn : g.loginButton),
+            icon: Icon(isLoading.value ? Icons.hourglass_top_rounded : Icons.login_rounded),
+            label: Text(isLoading.value ? g.loggingIn : g.loginButton),
           ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: isLoading.value ? null : () => context.push("/home/gateway-forgot-password"),
-            child: Text(Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh') ? "忘记密码" : "Forgot Password"),
+            child: Text(
+              Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh') ? "忘记密码" : "Forgot Password",
+            ),
           ),
           const SizedBox(height: 8),
           OutlinedButton(

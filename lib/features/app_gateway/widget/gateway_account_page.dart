@@ -233,13 +233,23 @@ class GatewayAccountPage extends HookConsumerWidget {
                 children: [
                   Row(
                     children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.primary.withValues(alpha: 0.14),
+                        ),
+                        child: Icon(Icons.account_circle_rounded, color: theme.colorScheme.primary),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           '${g.accountEmail}: ${s.email}',
                           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      Icon(Icons.verified_user, color: theme.colorScheme.primary),
+                      Icon(Icons.verified_user_rounded, color: theme.colorScheme.primary),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -321,7 +331,13 @@ class GatewayAccountPage extends HookConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(isZh ? 'Telegram 绑定' : 'Telegram Binding', style: theme.textTheme.titleMedium),
+                  Row(
+                    children: [
+                      Icon(Icons.telegram_rounded, color: theme.colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text(isZh ? 'Telegram 绑定' : 'Telegram Binding', style: theme.textTheme.titleMedium),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     tg?.linked == true || s.telegramBound
@@ -368,7 +384,13 @@ class GatewayAccountPage extends HookConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(g.inviteCenterTitle, style: theme.textTheme.titleMedium),
+                    Row(
+                      children: [
+                        Icon(Icons.people_alt_rounded, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(g.inviteCenterTitle, style: theme.textTheme.titleMedium),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Text('${g.inviteCode}: ${invite.inviteCode ?? '--'}'),
                     Text('${g.inviteLink}: ${invite.inviteUrl ?? '--'}'),
@@ -494,7 +516,13 @@ class GatewayAccountPage extends HookConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(g.noticesTitle, style: theme.textTheme.titleMedium),
+                  Row(
+                    children: [
+                      Icon(Icons.notifications_active_rounded, color: theme.colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text(g.noticesTitle, style: theme.textTheme.titleMedium),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   if (notices.value.isEmpty)
                     Text(isZh ? '暂无公告' : 'No notices')
@@ -525,6 +553,7 @@ class GatewayAccountPage extends HookConsumerWidget {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.school_rounded),
                   title: Text(g.openKnowledge),
                   subtitle: Text(
                     isZh ? '安卓 / iPhone / Windows / macOS / Linux' : 'Android / iOS / Windows / macOS / Linux',
@@ -533,18 +562,21 @@ class GatewayAccountPage extends HookConsumerWidget {
                   onTap: () => context.push('/gateway-account/knowledge'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.support_agent_rounded),
                   title: Text(g.ticket),
                   subtitle: Text(g.openTicketInApp),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: openTicket,
                 ),
                 ListTile(
+                  leading: const Icon(Icons.telegram_rounded),
                   title: Text(g.telegram),
                   subtitle: Text(summary.value?.telegramUrl ?? Constants.telegramChannelUrl),
                   onTap: () =>
                       UriUtils.tryLaunch(Uri.parse(summary.value?.telegramUrl ?? Constants.telegramChannelUrl)),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.code_rounded),
                   title: Text(g.github),
                   subtitle: Text(summary.value?.githubUrl ?? Constants.githubUrl),
                   onTap: () => UriUtils.tryLaunch(Uri.parse(summary.value?.githubUrl ?? Constants.githubUrl)),
@@ -589,8 +621,8 @@ class GatewayAccountPage extends HookConsumerWidget {
             const SizedBox(height: 8),
             TabBar(
               tabs: [
-                Tab(text: isZh ? '账户页' : 'Account'),
-                Tab(text: isZh ? '服务页' : 'Service'),
+                Tab(icon: const Icon(Icons.account_circle_rounded), text: isZh ? '账户页' : 'Account'),
+                Tab(icon: const Icon(Icons.local_offer_rounded), text: isZh ? '服务页' : 'Service'),
               ],
             ),
             Expanded(child: TabBarView(children: [accountTab(summary.value!), serviceTab()])),
@@ -601,7 +633,13 @@ class GatewayAccountPage extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(g.accountCenterTitle),
+        title: Row(
+          children: [
+            Icon(Icons.manage_accounts_rounded, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(g.accountCenterTitle),
+          ],
+        ),
         actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh))],
       ),
       body: content,

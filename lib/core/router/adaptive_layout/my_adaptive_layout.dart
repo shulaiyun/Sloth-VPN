@@ -150,11 +150,27 @@ class MyAdaptiveLayout extends HookConsumerWidget {
 
   List<NavigationDestination> _navDests(BuildContext context, List<ShellRouteAction> actions) {
     final scheme = Theme.of(context).colorScheme;
+    IconData fallbackOutline(ShellRouteAction action) => switch (action.icon) {
+      SlothIconType.home => Icons.home_outlined,
+      SlothIconType.subscription => Icons.shopping_bag_outlined,
+      SlothIconType.cloud => Icons.account_circle_outlined,
+      SlothIconType.settings => Icons.tune_outlined,
+      _ => Icons.circle_outlined,
+    };
+
+    IconData fallbackFilled(ShellRouteAction action) => switch (action.icon) {
+      SlothIconType.home => Icons.home_rounded,
+      SlothIconType.subscription => Icons.shopping_bag_rounded,
+      SlothIconType.cloud => Icons.account_circle_rounded,
+      SlothIconType.settings => Icons.tune_rounded,
+      _ => Icons.circle,
+    };
+
     return actions
         .map(
           (e) => NavigationDestination(
-            icon: SlothIcon(e.icon, size: 22, color: scheme.onSurfaceVariant),
-            selectedIcon: SlothIcon(e.icon, size: 22, color: scheme.primary),
+            icon: Icon(fallbackOutline(e), size: 22, color: scheme.onSurfaceVariant),
+            selectedIcon: Icon(fallbackFilled(e), size: 22, color: scheme.primary),
             label: e.title,
           ),
         )

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
@@ -19,6 +19,7 @@ class GatewayRegisterPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
+    final theme = Theme.of(context);
     final emailController = useTextEditingController();
     final passwordController = useTextEditingController();
     final emailCodeController = useTextEditingController();
@@ -52,10 +53,7 @@ class GatewayRegisterPage extends HookConsumerWidget {
       );
       if (action != true || !context.mounted) return;
 
-      await context.push(
-        "/gateway-account/webview",
-        extra: <String, String>{"url": target, "title": openLabel},
-      );
+      await context.push("/gateway-account/webview", extra: <String, String>{"url": target, "title": openLabel});
     }
 
     Future<void> loadPolicy() async {
@@ -138,12 +136,14 @@ class GatewayRegisterPage extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        await ref.read(slothGatewayPortalControllerProvider).register(
-          email: email,
-          password: password,
-          emailCode: emailCodeController.text.trim(),
-          inviteCode: inviteCodeController.text.trim(),
-        );
+        await ref
+            .read(slothGatewayPortalControllerProvider)
+            .register(
+              email: email,
+              password: password,
+              emailCode: emailCodeController.text.trim(),
+              inviteCode: inviteCodeController.text.trim(),
+            );
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerSucceeded)));
         context.go("/gateway-account");
@@ -163,11 +163,53 @@ class GatewayRegisterPage extends HookConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(g.registerTitle)),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Icon(Icons.person_add_alt_1_rounded, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(g.registerTitle),
+          ],
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(g.registerSubtitle),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
+                  theme.colorScheme.secondaryContainer.withValues(alpha: 0.72),
+                ],
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.18),
+                  ),
+                  child: Icon(Icons.app_registration_rounded, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    g.registerSubtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 10),
           if (policyLoading.value) const LinearProgressIndicator(),
           if (policy.value != null && policy.value!.allowedEmailSuffixes.isNotEmpty)
@@ -178,28 +220,34 @@ class GatewayRegisterPage extends HookConsumerWidget {
           if (policy.value != null && !policy.value!.registerEnabled)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                g.registerClosedHint,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+              child: Text(g.registerClosedHint, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           const SizedBox(height: 16),
           TextField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(labelText: g.emailLabel, border: const OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: g.emailLabel,
+              prefixIcon: const Icon(Icons.alternate_email_rounded),
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: passwordController,
             obscureText: true,
-            decoration: InputDecoration(labelText: g.passwordHint, border: const OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: g.passwordHint,
+              prefixIcon: const Icon(Icons.lock_rounded),
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: emailCodeController,
             decoration: InputDecoration(
               labelText: (policy.value?.emailVerifyRequired ?? false) ? "${g.emailCodeLabel} *" : g.emailCodeLabel,
+              prefixIcon: const Icon(Icons.mark_email_read_rounded),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -216,13 +264,15 @@ class GatewayRegisterPage extends HookConsumerWidget {
             controller: inviteCodeController,
             decoration: InputDecoration(
               labelText: (policy.value?.inviteCodeRequired ?? false) ? "${g.inviteCodeLabel} *" : g.inviteCodeLabel,
+              prefixIcon: const Icon(Icons.confirmation_number_rounded),
               border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton(
+          FilledButton.icon(
             onPressed: isLoading.value || (policy.value != null && !policy.value!.registerEnabled) ? null : register,
-            child: Text(isLoading.value ? g.registering : g.registerAndLogin),
+            icon: Icon(isLoading.value ? Icons.hourglass_top_rounded : Icons.rocket_launch_rounded),
+            label: Text(isLoading.value ? g.registering : g.registerAndLogin),
           ),
           const SizedBox(height: 8),
           OutlinedButton(onPressed: isLoading.value ? null : () => context.pop(), child: Text(g.back)),

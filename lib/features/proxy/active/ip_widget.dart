@@ -112,11 +112,22 @@ class IPCountryFlag extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider).requireValue;
+    final normalizedCode = () {
+      final raw = countryCode?.trim().toUpperCase();
+      if (raw == null || raw.isEmpty) return null;
+      final mapped = switch (raw) {
+        "UK" => "GB",
+        "EL" => "GR",
+        _ => raw,
+      };
+      return RegExp(r'^[A-Z]{2}$').hasMatch(mapped) ? mapped : null;
+    }();
+
     return Semantics(
       label: t.pages.proxies.ipInfo.country,
       child: Padding(
         padding: padding,
-        child: (countryCode?.isEmpty ?? true)
+        child: normalizedCode == null
             ? Icon(FluentIcons.question_circle_20_regular, size: size)
             : SizedBox(
                 width: size,
@@ -127,7 +138,7 @@ class IPCountryFlag extends HookConsumerWidget {
                   children: [
                     CircleFlag(
                       // key: ValueKey(countryCode),
-                      countryCode!.toLowerCase() == "ir" ? "ir-shir" : countryCode!,
+                      normalizedCode.toLowerCase() == "ir" ? "ir-shir" : normalizedCode,
                       size: size - 8,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8), // Rounded effect

@@ -612,7 +612,11 @@ class GatewayPlansPage extends HookConsumerWidget {
                 child: DropdownButtonFormField<int>(
                   key: ValueKey('payment-method-${selectedMethodId.value}'),
                   initialValue: selectedMethodId.value,
-                  decoration: InputDecoration(labelText: g.paymentMethod, border: const OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: g.paymentMethod,
+                    prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
+                    border: const OutlineInputBorder(),
+                  ),
                   items: methods.value
                       .map((m) => DropdownMenuItem(value: m.id, child: Text('${m.icon} ${m.name}')))
                       .toList(),
@@ -631,6 +635,16 @@ class GatewayPlansPage extends HookConsumerWidget {
                   children: [
                     Row(
                       children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                          ),
+                          child: Icon(Icons.inventory_2_rounded, color: theme.colorScheme.primary, size: 18),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             plan.name,
@@ -675,7 +689,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                     const SizedBox(height: 10),
                     FilledButton.icon(
                       onPressed: (plan.sell && runningPlanId.value != plan.id) ? () => buy(plan) : null,
-                      icon: const Icon(Icons.shopping_cart_checkout),
+                      icon: const Icon(Icons.payments_rounded),
                       label: Text(runningPlanId.value == plan.id ? g.processing : g.buyNow),
                     ),
                   ],
@@ -771,25 +785,33 @@ class GatewayPlansPage extends HookConsumerWidget {
                         runSpacing: 8,
                         children: [
                           if (order.isPayable)
-                            FilledButton(
+                            FilledButton.icon(
                               onPressed: busy ? null : () => continuePay(order),
-                              child: Text(busy ? g.processing : g.continuePay),
+                              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                              label: Text(busy ? g.processing : g.continuePay),
                             ),
                           if (order.canCancel)
-                            OutlinedButton(
+                            OutlinedButton.icon(
                               onPressed: busy ? null : () => cancelOrder(order),
-                              child: Text(g.cancelOrder),
+                              icon: const Icon(Icons.cancel_outlined, size: 18),
+                              label: Text(g.cancelOrder),
                             ),
                           if (order.isPayable && order.canCancel)
-                            OutlinedButton(
+                            OutlinedButton.icon(
                               onPressed: busy ? null : () => closeAndRecreateOrder(order),
-                              child: Text(isZh ? '关闭并重建' : 'Recreate Order'),
+                              icon: const Icon(Icons.autorenew_rounded, size: 18),
+                              label: Text(isZh ? '关闭并重建' : 'Recreate Order'),
                             ),
-                          OutlinedButton(
+                          OutlinedButton.icon(
                             onPressed: busy ? null : () => refreshOrderStatus(order),
-                            child: Text(g.refreshOrderStatus),
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: Text(g.refreshOrderStatus),
                           ),
-                          TextButton(onPressed: busy ? null : () => showOrderDetail(order), child: Text(g.orderDetail)),
+                          TextButton.icon(
+                            onPressed: busy ? null : () => showOrderDetail(order),
+                            icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                            label: Text(g.orderDetail),
+                          ),
                         ],
                       ),
                     ],
@@ -881,7 +903,13 @@ class GatewayPlansPage extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(g.plansTitle),
+        title: Row(
+          children: [
+            Icon(Icons.shopping_bag_rounded, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(g.plansTitle),
+          ],
+        ),
         actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh))],
       ),
       body: body,
