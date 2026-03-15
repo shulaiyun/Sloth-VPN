@@ -488,6 +488,104 @@ class GatewayOrderPaymentResult {
   );
 }
 
+class GatewayCouponCheckResult {
+  GatewayCouponCheckResult({
+    required this.valid,
+    this.code,
+    this.name,
+    this.typeCode = 0,
+    this.typeLabel,
+    this.value = 0,
+    this.discountAmount = 0,
+    this.startedAt,
+    this.endedAt,
+  });
+
+  final bool valid;
+  final String? code;
+  final String? name;
+  final int typeCode;
+  final String? typeLabel;
+  final int value;
+  final int discountAmount;
+  final String? startedAt;
+  final String? endedAt;
+
+  factory GatewayCouponCheckResult.fromMap(Map<String, dynamic> map) => GatewayCouponCheckResult(
+    valid: map["valid"] == true,
+    code: _asNullableString(map["code"]),
+    name: _asNullableString(map["name"]),
+    typeCode: _asInt(map["type"]),
+    typeLabel: _asNullableString(map["type_label"]),
+    value: _asInt(map["value"]),
+    discountAmount: _asInt(map["discount_amount"]),
+    startedAt: _asNullableString(map["started_at"]),
+    endedAt: _asNullableString(map["ended_at"]),
+  );
+}
+
+class GatewayGiftCardCheckResult {
+  GatewayGiftCardCheckResult({required this.canRedeem, this.reason, this.code, this.rewardPreview, this.codeInfo});
+
+  final bool canRedeem;
+  final String? reason;
+  final String? code;
+  final Map<String, dynamic>? rewardPreview;
+  final Map<String, dynamic>? codeInfo;
+
+  factory GatewayGiftCardCheckResult.fromMap(Map<String, dynamic> map) => GatewayGiftCardCheckResult(
+    canRedeem: map["can_redeem"] == true,
+    reason: _asNullableString(map["reason"]),
+    code: _asNullableString(map["code"]),
+    rewardPreview: map["reward_preview"] is Map ? _asMap(map["reward_preview"]) : null,
+    codeInfo: map["code_info"] is Map ? _asMap(map["code_info"]) : null,
+  );
+}
+
+class GatewayGiftCardRedeemResult {
+  GatewayGiftCardRedeemResult({required this.redeemed, this.code, this.redeemedAt});
+
+  final bool redeemed;
+  final String? code;
+  final String? redeemedAt;
+
+  factory GatewayGiftCardRedeemResult.fromMap(Map<String, dynamic> map) => GatewayGiftCardRedeemResult(
+    redeemed: map["redeemed"] == true,
+    code: _asNullableString(map["code"]),
+    redeemedAt: _asNullableString(map["redeemed_at"]),
+  );
+}
+
+class GatewayGiftCardHistoryItem {
+  GatewayGiftCardHistoryItem({
+    required this.id,
+    this.code,
+    this.type,
+    this.status,
+    this.amount = 0,
+    this.createdAt,
+    this.usedAt,
+  });
+
+  final int id;
+  final String? code;
+  final String? type;
+  final String? status;
+  final int amount;
+  final String? createdAt;
+  final String? usedAt;
+
+  factory GatewayGiftCardHistoryItem.fromMap(Map<String, dynamic> map) => GatewayGiftCardHistoryItem(
+    id: _asInt(map["id"]),
+    code: _asNullableString(map["code"]),
+    type: _asNullableString(map["type"]),
+    status: _asNullableString(map["status"]),
+    amount: _asInt(map["amount"]),
+    createdAt: _asNullableString(map["created_at"]),
+    usedAt: _asNullableString(map["used_at"]),
+  );
+}
+
 class GatewayNoticeItem {
   GatewayNoticeItem({required this.id, required this.title, required this.content, this.createdAt, this.updatedAt});
 

@@ -54,18 +54,31 @@ class GatewayPlansPage extends HookConsumerWidget {
     final orderStatusFilter = useState<String>('all');
     final tabIndex = useState<int>(0);
     final errorText = useState<String?>(null);
+    final couponTextController = useTextEditingController();
+    final giftCardTextController = useTextEditingController();
+    final promoBusy = useState(false);
+    final giftHistoryLoading = useState(false);
+    final couponPreviewText = useState<String?>(null);
+    final giftCardPreviewText = useState<String?>(null);
+    final giftCardHistory = useState<List<GatewayGiftCardHistoryItem>>([]);
 
     void showTip(String message, {Duration duration = const Duration(seconds: 6)}) {
       final messenger = ScaffoldMessenger.of(context);
+      final bgColor = theme.brightness == Brightness.dark ? const Color(0xFF133564) : const Color(0xFF1C4DA1);
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
-          backgroundColor: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.95),
+          backgroundColor: bgColor,
           content: Row(
             children: [
-              Icon(Icons.info_outline_rounded, color: theme.colorScheme.primary),
+              const Icon(Icons.info_outline_rounded, color: Colors.white),
               const SizedBox(width: 8),
-              Expanded(child: Text(message)),
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
             ],
           ),
           duration: duration,
@@ -81,14 +94,17 @@ class GatewayPlansPage extends HookConsumerWidget {
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
-          backgroundColor: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.97),
+          backgroundColor: theme.brightness == Brightness.dark ? const Color(0xFF4A2B25) : const Color(0xFF7A311F),
           content: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.warning_amber_rounded, color: theme.colorScheme.tertiary),
+              const Icon(Icons.warning_amber_rounded, color: Colors.white),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(message, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -97,6 +113,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           action: SnackBarAction(
+            textColor: const Color(0xFF99E0FF),
             label: isZh ? '查看订单' : 'View Orders',
             onPressed: () {
               tabIndex.value = 1;
@@ -112,6 +129,23 @@ class GatewayPlansPage extends HookConsumerWidget {
       return value.isEmpty ? null : value;
     }
 
+    Future<void> loadGiftCardHistory() async {
+      if (!loggedIn.value) {
+        giftCardHistory.value = const [];
+        return;
+      }
+      giftHistoryLoading.value = true;
+      try {
+        final portal = ref.read(slothGatewayPortalControllerProvider);
+        final history = await portal.fetchGiftCardHistory();
+        giftCardHistory.value = history.take(6).toList();
+      } on GatewayApiException {
+        giftCardHistory.value = const [];
+      } finally {
+        giftHistoryLoading.value = false;
+      }
+    }
+
     Future<void> load() async {
       loading.value = true;
       errorText.value = null;
@@ -123,6 +157,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           methods.value = const [];
           orders.value = const [];
           summary.value = null;
+          giftCardHistory.value = const [];
           return;
         }
 
@@ -147,6 +182,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           }
         }
         selectedPeriods.value = defaults;
+        await loadGiftCardHistory();
       } on GatewayApiException catch (error) {
         errorText.value = error.message;
       } catch (_) {
@@ -217,9 +253,7 @@ class GatewayPlansPage extends HookConsumerWidget {
         if (openedInAppBrowser) {
           if (!context.mounted) return;
           showTip(
-            isZh
-                ? 'Payment opened in app browser, return and order will auto refresh'
-                : 'Payment opened in app browser, return and order will auto refresh',
+            isZh ? '已在应用内支付页打开，返回后会自动刷新订单状态' : 'Payment opened in app browser, return and order will auto refresh',
             duration: const Duration(seconds: 8),
           );
           unawaited(watchOrderSettlement(orderNo));
@@ -235,7 +269,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           if (!context.mounted) return;
           showTip(
             isZh
-                ? 'Payment opened in system browser, return and order will auto refresh'
+                ? '已在系统浏览器打开支付页，返回应用后会自动刷新订单状态'
                 : 'Payment opened in system browser, return and order will auto refresh',
             duration: const Duration(seconds: 8),
           );
@@ -514,6 +548,77 @@ class GatewayPlansPage extends HookConsumerWidget {
       return result == true;
     }
 
+    Future<String?> resolveCouponCodeForBuy({required int planId, required String period}) async {
+      final code = couponTextController.text.trim();
+      if (code.isEmpty) return null;
+      promoBusy.value = true;
+      try {
+        final portal = ref.read(slothGatewayPortalControllerProvider);
+        final result = await portal.checkCoupon(code: code, planId: planId, period: period);
+        if (!result.valid) {
+          throw GatewayApiException(message: isZh ? '优惠券不可用，请更换后重试' : 'Coupon is not available');
+        }
+        final discountText = _presentPrice(result.discountAmount > 0 ? result.discountAmount : result.value);
+        couponPreviewText.value = isZh ? '优惠券可用，预计减免 $discountText' : 'Coupon valid, estimated discount $discountText';
+        return code;
+      } on GatewayApiException catch (error) {
+        couponPreviewText.value = null;
+        if (!context.mounted) return null;
+        showTip(error.message, duration: const Duration(seconds: 8));
+        rethrow;
+      } finally {
+        promoBusy.value = false;
+      }
+    }
+
+    Future<void> previewGiftCard() async {
+      final code = giftCardTextController.text.trim();
+      if (code.isEmpty) {
+        showTip(isZh ? '请输入礼品卡/兑换码' : 'Please enter gift card code');
+        return;
+      }
+      promoBusy.value = true;
+      try {
+        final portal = ref.read(slothGatewayPortalControllerProvider);
+        final result = await portal.checkGiftCard(code);
+        giftCardPreviewText.value = result.canRedeem
+            ? (isZh ? '礼品卡可兑换，点击“立即兑换”即可到账' : 'Gift card is redeemable now')
+            : (result.reason ?? (isZh ? '礼品卡暂不可兑换' : 'Gift card cannot be redeemed now'));
+      } on GatewayApiException catch (error) {
+        giftCardPreviewText.value = error.message;
+      } finally {
+        promoBusy.value = false;
+      }
+    }
+
+    Future<void> redeemGiftCard() async {
+      final code = giftCardTextController.text.trim();
+      if (code.isEmpty) {
+        showTip(isZh ? '请输入礼品卡/兑换码' : 'Please enter gift card code');
+        return;
+      }
+      promoBusy.value = true;
+      try {
+        final portal = ref.read(slothGatewayPortalControllerProvider);
+        final result = await portal.redeemGiftCard(code);
+        if (!context.mounted) return;
+        showTip(
+          result.redeemed
+              ? (isZh ? '礼品卡兑换成功，账户余额已更新' : 'Gift card redeemed and balance updated')
+              : (isZh ? '礼品卡兑换未成功，请稍后重试' : 'Gift card redeem failed'),
+          duration: const Duration(seconds: 8),
+        );
+        giftCardPreviewText.value = null;
+        giftCardTextController.clear();
+        await load();
+      } on GatewayApiException catch (error) {
+        if (!context.mounted) return;
+        showTip(error.message, duration: const Duration(seconds: 8));
+      } finally {
+        promoBusy.value = false;
+      }
+    }
+
     Future<void> buy(GatewayPlan plan) async {
       final methodId = selectedMethodId.value;
       final period = selectedPeriods.value[plan.id];
@@ -527,7 +632,8 @@ class GatewayPlansPage extends HookConsumerWidget {
       runningPlanId.value = plan.id;
       try {
         final portal = ref.read(slothGatewayPortalControllerProvider);
-        final orderNo = await portal.createOrder(planId: plan.id, period: period);
+        final couponCode = await resolveCouponCodeForBuy(planId: plan.id, period: period);
+        final orderNo = await portal.createOrder(planId: plan.id, period: period, couponCode: couponCode);
         if (orderNo.isEmpty) throw GatewayApiException(message: g.unknownError);
 
         final preview = await portal.orderDetail(orderNo);
@@ -625,11 +731,132 @@ class GatewayPlansPage extends HookConsumerWidget {
       );
     }
 
+    Widget promoCard() {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.redeem_rounded, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    isZh ? '优惠券 / 礼品卡' : 'Coupon / Gift Card',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: couponTextController,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: isZh ? '优惠券代码（下单前自动校验）' : 'Coupon Code (validated before placing order)',
+                  prefixIcon: const Icon(Icons.local_offer_outlined),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear_rounded),
+                    onPressed: () {
+                      couponTextController.clear();
+                      couponPreviewText.value = null;
+                    },
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => couponPreviewText.value = null,
+              ),
+              if (couponPreviewText.value != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  couponPreviewText.value!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: giftCardTextController,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: isZh ? '礼品卡 / 兑换码' : 'Gift Card Code',
+                  prefixIcon: const Icon(Icons.card_giftcard_rounded),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear_rounded),
+                    onPressed: () {
+                      giftCardTextController.clear();
+                      giftCardPreviewText.value = null;
+                    },
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => giftCardPreviewText.value = null,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: promoBusy.value ? null : previewGiftCard,
+                      icon: const Icon(Icons.verified_outlined),
+                      label: Text(isZh ? '校验礼品卡' : 'Check Gift Card'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _GatewayPrimaryActionButton(
+                      onPressed: promoBusy.value ? null : redeemGiftCard,
+                      icon: const Icon(Icons.redeem_rounded, size: 18),
+                      label: promoBusy.value ? g.processing : (isZh ? '立即兑换' : 'Redeem Now'),
+                    ),
+                  ),
+                ],
+              ),
+              if (giftCardPreviewText.value != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  giftCardPreviewText.value!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              if (giftHistoryLoading.value) ...[const SizedBox(height: 8), const LinearProgressIndicator(minHeight: 2)],
+              if (giftCardHistory.value.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  isZh ? '最近礼品卡记录' : 'Recent Gift Card Records',
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                ...giftCardHistory.value
+                    .take(3)
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${item.code ?? '--'} · ${item.status ?? '--'} · ${_presentPrice(item.amount)}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
     Widget planTab() {
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [
           rulesCard(),
+          promoCard(),
           if (methods.value.isNotEmpty) ...[
             Card(
               margin: const EdgeInsets.only(bottom: 12),

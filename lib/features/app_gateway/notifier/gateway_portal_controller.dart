@@ -1,4 +1,4 @@
-﻿import 'package:hiddify/core/app_info/app_info_provider.dart';
+import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_session_store.dart';
@@ -146,17 +146,9 @@ class SlothGatewayPortalController with AppLogger {
     await _tryAutoSync("auth_register");
   }
 
-  Future<void> forgotPassword({
-    required String email,
-    required String newPassword,
-    required String emailCode,
-  }) async {
+  Future<void> forgotPassword({required String email, required String newPassword, required String emailCode}) async {
     final store = await _store();
-    final result = await _api.forgotPassword(
-      email: email,
-      newPassword: newPassword,
-      emailCode: emailCode,
-    );
+    final result = await _api.forgotPassword(email: email, newPassword: newPassword, emailCode: emailCode);
     if (result != null) {
       await store.saveAuth(
         accessToken: result.accessToken,
@@ -203,6 +195,40 @@ class SlothGatewayPortalController with AppLogger {
       throw GatewayApiException(message: "请先登录后再下单");
     }
     return _api.createOrder(accessToken: token!, planId: planId, period: period, couponCode: couponCode);
+  }
+
+  Future<GatewayCouponCheckResult> checkCoupon({
+    required String code,
+    required int planId,
+    required String period,
+  }) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再使用优惠券");
+    }
+    return _api.checkCoupon(accessToken: token!, code: code, planId: planId, period: period);
+  }
+
+  Future<GatewayGiftCardCheckResult> checkGiftCard(String code) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再使用礼品卡");
+    }
+    return _api.checkGiftCard(accessToken: token!, code: code);
+  }
+
+  Future<GatewayGiftCardRedeemResult> redeemGiftCard(String code) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再兑换礼品卡");
+    }
+    return _api.redeemGiftCard(accessToken: token!, code: code);
+  }
+
+  Future<List<GatewayGiftCardHistoryItem>> fetchGiftCardHistory() async {
+    final token = await _accessToken();
+    if (_isBlank(token)) return const [];
+    return _api.giftCardHistory(token!);
   }
 
   Future<GatewayOrderPaymentResult> payOrder({required String orderNo, required int paymentMethodId}) async {
@@ -287,11 +313,7 @@ class SlothGatewayPortalController with AppLogger {
     return _api.ticketDetail(accessToken: token!, id: id);
   }
 
-  Future<GatewayTicketItem?> createTicket({
-    required String subject,
-    required String message,
-    int level = 1,
-  }) async {
+  Future<GatewayTicketItem?> createTicket({required String subject, required String message, int level = 1}) async {
     final token = await _accessToken();
     if (_isBlank(token)) {
       throw GatewayApiException(message: "请先登录后再提交工单");

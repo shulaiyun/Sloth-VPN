@@ -202,6 +202,57 @@ const mapUpstreamOrderError = (error: unknown): never => {
   throw new AppError(502, ErrorCodes.UPSTREAM_ERROR, "订单服务暂时不可用，请稍后重试");
 };
 
+const mapUpstreamPromoError = (error: unknown, fallbackMessage: string): never => {
+  if (!(error instanceof AppError)) throw error;
+  if (error.code !== ErrorCodes.UPSTREAM_ERROR) throw error;
+
+  const extracted = extractOrderError(error);
+  const { status, text, upstreamMessage } = extracted;
+
+  if (status >= 400 && status < 500) {
+    if (
+      containsAny(text, [
+        "coupon cannot be empty",
+        "invalid coupon",
+        "coupon failed",
+        "coupon has expired",
+        "this coupon has expired",
+        "no longer available",
+        "cannot be used for this subscription",
+        "cannot be used for this period",
+        "coupon can only be used",
+        "优惠券",
+        "折扣码",
+      ])
+    ) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, upstreamMessage || "优惠券不可用，请检查后重试");
+    }
+
+    if (
+      containsAny(text, [
+        "gift card",
+        "gift-card",
+        "cannot redeem",
+        "already used",
+        "expired",
+        "not active",
+        "礼品卡",
+        "兑换码",
+        "已使用",
+        "已过期",
+      ])
+    ) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, upstreamMessage || "礼品卡不可用，请检查后重试");
+    }
+
+    if (upstreamMessage.trim().length > 0) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, upstreamMessage.trim());
+    }
+  }
+
+  throw new AppError(502, ErrorCodes.UPSTREAM_ERROR, fallbackMessage);
+};
+
 export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void => {
   app.get("/api/app/v1/orders/payment-methods", async (request, reply) => {
     const session = requireSession(request, deps.sessions);
@@ -215,6 +266,112 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
       handling_fee_percent: Number(item.handling_fee_percent ?? 0),
     }));
     return ok(reply, { methods: normalized });
+  });
+
+  app.post("/api/app/v1/orders/coupon/check", async (request, reply) => {
+    const session = requireSession(request, deps.sessions);
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const code = String(body.code ?? "").trim();
+    const planId = Number(body.plan_id ?? 0);
+    const period = String(body.period ?? "").trim();
+    if (!code) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "优惠券不能为空");
+    }
+
+    const raw = await deps.xboard
+      .checkCoupon({
+        authData: session.xboardAuthData,
+        code,
+        planId: Number.isFinite(planId) && planId > 0 ? planId : undefined,
+        period: period || undefined,
+      })
+      .catch((err): never => mapUpstreamPromoError(err, "优惠券服务暂时不可用，请稍后重试"));
+
+    const typeCode = parseNumber(raw.type);
+    return ok(reply, {
+      valid: true,
+      code: String(raw.code ?? code).trim(),
+      name: String(raw.name ?? "").trim() || null,
+      type: typeCode,
+      type_label: typeCode === 1 ? "fixed_amount" : typeCode === 2 ? "percent" : "unknown",
+      value: parseNumber(raw.value),
+      discount_amount: parseNumber(raw.discount_amount ?? raw.value),
+      limit_plan_ids: Array.isArray(raw.limit_plan_ids) ? raw.limit_plan_ids : [],
+      limit_period: Array.isArray(raw.limit_period) ? raw.limit_period : [],
+      started_at: toIsoTimeOrNull(raw.started_at),
+      ended_at: toIsoTimeOrNull(raw.ended_at),
+      raw,
+    });
+  });
+
+  app.post("/api/app/v1/orders/gift-card/check", async (request, reply) => {
+    const session = requireSession(request, deps.sessions);
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const code = String(body.code ?? "").trim();
+    if (!code) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "礼品卡不能为空");
+    }
+
+    const raw = await deps.xboard
+      .checkGiftCard({ authData: session.xboardAuthData, code })
+      .catch((err): never => mapUpstreamPromoError(err, "礼品卡服务暂时不可用，请稍后重试"));
+
+    const codeInfo =
+      raw.code_info && typeof raw.code_info === "object" ? (raw.code_info as Record<string, unknown>) : {};
+    const rewardPreview =
+      raw.reward_preview && typeof raw.reward_preview === "object"
+        ? (raw.reward_preview as Record<string, unknown>)
+        : {};
+
+    return ok(reply, {
+      can_redeem: raw.can_redeem === true,
+      reason: String(raw.reason ?? "").trim() || null,
+      code: String(codeInfo.code ?? code).trim(),
+      reward_preview: rewardPreview,
+      code_info: codeInfo,
+      raw,
+    });
+  });
+
+  app.post("/api/app/v1/orders/gift-card/redeem", async (request, reply) => {
+    const session = requireSession(request, deps.sessions);
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const code = String(body.code ?? "").trim();
+    if (!code) {
+      throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "礼品卡不能为空");
+    }
+
+    const raw = await deps.xboard
+      .redeemGiftCard({ authData: session.xboardAuthData, code })
+      .catch((err): never => mapUpstreamPromoError(err, "礼品卡兑换失败，请稍后重试"));
+
+    return ok(reply, {
+      redeemed: true,
+      code,
+      result: raw,
+      redeemed_at: new Date().toISOString(),
+    });
+  });
+
+  app.get("/api/app/v1/orders/gift-card/history", async (request, reply) => {
+    const session = requireSession(request, deps.sessions);
+    const list = await deps.xboard
+      .getGiftCardHistory(session.xboardAuthData)
+      .catch((err): never => mapUpstreamPromoError(err, "礼品卡历史暂时不可用，请稍后重试"));
+
+    const normalized = list.map((item) => ({
+      id: parseNumber(item.id),
+      code: String(item.code ?? "").trim() || null,
+      type: String(item.type ?? item.template_type ?? "").trim() || null,
+      status: String(item.status ?? "").trim() || null,
+      amount: parseNumber(item.amount ?? item.value),
+      reward: item.reward,
+      created_at: toIsoTimeOrNull(item.created_at),
+      used_at: toIsoTimeOrNull(item.used_at),
+      raw: item,
+    }));
+
+    return ok(reply, { items: normalized, total: normalized.length });
   });
 
   app.get("/api/app/v1/orders", async (request, reply) => {

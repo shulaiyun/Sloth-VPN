@@ -563,6 +563,68 @@ export class XboardAdapter {
     return tradeNo.toString().trim();
   }
 
+  async checkCoupon(input: {
+    authData: string;
+    code: string;
+    planId?: number;
+    period?: string;
+  }): Promise<Record<string, unknown>> {
+    const body: Record<string, unknown> = { code: input.code };
+    if (Number.isFinite(input.planId) && (input.planId ?? 0) > 0) {
+      body.plan_id = input.planId;
+    }
+    if (input.period && input.period.trim().length > 0) {
+      body.period = input.period.trim();
+    }
+    const raw = await this.request<unknown>("POST", "/api/v1/user/coupon/check", body, input.authData);
+    return this.toRecord(raw);
+  }
+
+  async checkGiftCard(input: {
+    authData: string;
+    code: string;
+  }): Promise<Record<string, unknown>> {
+    const raw = await this.request<unknown>(
+      "POST",
+      "/api/v1/user/gift-card/check",
+      { code: input.code },
+      input.authData,
+    );
+    return this.toRecord(raw);
+  }
+
+  async redeemGiftCard(input: {
+    authData: string;
+    code: string;
+  }): Promise<Record<string, unknown>> {
+    const raw = await this.request<unknown>(
+      "POST",
+      "/api/v1/user/gift-card/redeem",
+      { code: input.code },
+      input.authData,
+    );
+    return this.toRecord(raw);
+  }
+
+  async getGiftCardHistory(authData: string): Promise<Array<Record<string, unknown>>> {
+    const raw = await this.request<unknown>("GET", "/api/v1/user/gift-card/history", undefined, authData);
+    if (Array.isArray(raw)) {
+      return raw.filter(
+        (item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item),
+      );
+    }
+    if (raw && typeof raw === "object") {
+      const mapped = raw as Record<string, unknown>;
+      const list = mapped["list"] ?? mapped["items"] ?? mapped["data"] ?? mapped["records"];
+      if (Array.isArray(list)) {
+        return list.filter(
+          (item): item is Record<string, unknown> => typeof item === "object" && item !== null && !Array.isArray(item),
+        );
+      }
+    }
+    return [];
+  }
+
   async checkoutOrder(input: {
     authData: string;
     orderNo: string;

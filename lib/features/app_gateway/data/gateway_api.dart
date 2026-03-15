@@ -143,6 +143,10 @@ class SlothGatewayApi with InfraLogger {
         return "该订单支付通道已失效，请关闭当前订单并重建后再支付";
       case "ORDER_NOT_CANCELLABLE":
         return "当前订单状态不可取消";
+      case "COUPON_INVALID":
+        return "优惠券不可用，请检查后重试";
+      case "GIFT_CARD_INVALID":
+        return "礼品卡不可用，请检查后重试";
       case "TICKET_UNAVAILABLE":
         return "工单服务暂时不可用，请稍后重试";
       case "UNAUTHORIZED":
@@ -161,6 +165,12 @@ class SlothGatewayApi with InfraLogger {
     }
     if (lower.contains("token is error") || lower.contains("jwt malformed")) {
       return "登录态无效，请重新登录";
+    }
+    if (lower.contains("coupon") || lower.contains("优惠券") || lower.contains("折扣码")) {
+      return "优惠券不可用，请检查后重试";
+    }
+    if (lower.contains("gift card") || lower.contains("gift-card") || lower.contains("礼品卡")) {
+      return "礼品卡不可用，请检查后重试";
     }
     if (lower.contains("timeout")) return "请求超时，请稍后重试";
     if (lower.contains("network") || lower.contains("socket")) return "网络异常，请检查网络后重试";
@@ -381,6 +391,51 @@ class SlothGatewayApi with InfraLogger {
       },
     );
     return data["order_no"]?.toString() ?? "";
+  }
+
+  Future<GatewayCouponCheckResult> checkCoupon({
+    required String accessToken,
+    required String code,
+    required int planId,
+    required String period,
+  }) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/orders/coupon/check",
+      accessToken: accessToken,
+      body: {"code": code, "plan_id": planId, "period": period},
+    );
+    return GatewayCouponCheckResult.fromMap(data);
+  }
+
+  Future<GatewayGiftCardCheckResult> checkGiftCard({required String accessToken, required String code}) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/orders/gift-card/check",
+      accessToken: accessToken,
+      body: {"code": code},
+    );
+    return GatewayGiftCardCheckResult.fromMap(data);
+  }
+
+  Future<GatewayGiftCardRedeemResult> redeemGiftCard({required String accessToken, required String code}) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/orders/gift-card/redeem",
+      accessToken: accessToken,
+      body: {"code": code},
+    );
+    return GatewayGiftCardRedeemResult.fromMap(data);
+  }
+
+  Future<List<GatewayGiftCardHistoryItem>> giftCardHistory(String accessToken) async {
+    final data = await _request(method: "GET", path: "/api/app/v1/orders/gift-card/history", accessToken: accessToken);
+    final raw = data["items"];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) => GatewayGiftCardHistoryItem.fromMap(item.cast<String, dynamic>()))
+        .toList();
   }
 
   Future<GatewayOrderPaymentResult> payOrder({

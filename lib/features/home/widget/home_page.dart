@@ -422,17 +422,37 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
   Future<void> _syncNow() async {
     setState(() => _syncing = true);
     final g = GatewayL10n.of(context);
+    final theme = Theme.of(context);
+
+    void showReadableTip(String message) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+          backgroundColor: theme.brightness == Brightness.dark ? const Color(0xFF133564) : const Color(0xFF1C4DA1),
+          content: Text(
+            message,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          duration: const Duration(seconds: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+
     try {
       await ref.read(slothGatewayPortalControllerProvider).syncNow();
       await _refresh();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.syncCompleted)));
+      showReadableTip(g.syncCompleted);
     } on GatewayApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.syncFailed(error.message))));
+      showReadableTip(g.syncFailed(error.message));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.syncFailed("unknown"))));
+      showReadableTip(g.syncFailed("unknown"));
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
@@ -464,7 +484,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -561,35 +581,50 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
               ),
             ],
             const SizedBox(height: 4),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                if (_loggedIn)
-                  _GatewayEntryPrimaryAction(
-                    onPressed: () => context.go("/gateway-account"),
-                    icon: const Icon(Icons.account_circle_rounded),
-                    label: g.myAccount,
-                  )
-                else
+            if (_loggedIn)
+              Row(
+                children: [
+                  Expanded(
+                    child: _GatewayEntryPrimaryAction(
+                      onPressed: () => context.go("/gateway-account"),
+                      icon: const Icon(Icons.account_circle_rounded),
+                      label: g.myAccount,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _GatewayEntryOutlineAction(
+                      onPressed: () => context.go("/gateway-plans"),
+                      icon: const Icon(Icons.shopping_bag_rounded),
+                      label: isZh ? '查看套餐/续费' : 'Plans / Renew',
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _GatewayEntryOutlineAction(
+                      onPressed: _syncing ? null : _syncNow,
+                      icon: _syncing
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.sync_rounded),
+                      label: _syncing ? g.processing : g.syncNow,
+                    ),
+                  ),
+                ],
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
                   _GatewayEntryLoginAction(
                     onPressed: () => context.push("/home/gateway-login"),
                     icon: const Icon(Icons.login_rounded),
                     label: g.login,
                   ),
-                if (_loggedIn)
-                  OutlinedButton(
-                    onPressed: () => context.go("/gateway-plans"),
-                    child: Text(isZh ? "查看套餐 / 快速续费" : "Buy / Renew"),
-                  )
-                else
                   OutlinedButton(onPressed: () => context.push("/home/gateway-register"), child: Text(g.register)),
-                if (_loggedIn)
-                  TextButton(onPressed: _syncing ? null : _syncNow, child: Text(_syncing ? g.processing : g.syncNow))
-                else
                   TextButton(onPressed: () => context.go("/gateway-plans"), child: Text(g.viewPlans)),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),
@@ -629,6 +664,37 @@ class _GatewayEntryPrimaryAction extends StatelessWidget {
           foregroundColor: Colors.white,
           shadowColor: Colors.transparent,
         ),
+      ),
+    );
+  }
+}
+
+class _GatewayEntryOutlineAction extends StatelessWidget {
+  const _GatewayEntryOutlineAction({required this.onPressed, required this.icon, required this.label});
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disabled = onPressed == null;
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: IconTheme(
+        data: IconThemeData(size: 17, color: disabled ? theme.disabledColor : null),
+        child: icon,
+      ),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+        side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: disabled ? 0.35 : 0.85)),
+        backgroundColor: theme.colorScheme.surfaceContainerHigh.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.36 : 0.62,
+        ),
+        foregroundColor: disabled ? theme.disabledColor : theme.colorScheme.onSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
