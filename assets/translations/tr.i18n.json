@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "appTitle": "树懒VPN",
     "start": "Ba艧lat",
@@ -562,7 +562,7 @@
       "msg": "VPN ba臒lant谋 ayr谋nt谋lar谋n谋z谋 i莽eren bir ba臒lant谋 profili ekleyerek ba艧layal谋m.\n\nHen眉z bir VPN sunucunuz yok mu? Endi艧elenmeyin, h谋zl谋 ve 眉cretsiz bir 艧ekilde kurmak i莽in a艧a臒谋daki e臒itimi takip edin.",
       "helpBtn": {
         "label": "Nas谋l yap谋ld谋臒谋n谋 g枚ster",
-        "url": "https://github.com/shulaiyun/shulai-VPN.git"
+        "url": "https://github.com/shulaiyun/Sloth-VPN.git"
       }
     },
     "unknownDomainsWarning": {
@@ -641,3 +641,4 @@
     }
   }
 }
+

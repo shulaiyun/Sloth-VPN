@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "appTitle": "树懒VPN",
     "start": "Mulai",
@@ -562,7 +562,7 @@
       "msg": "Mari kita mulai dengan menambahkan profil koneksi yang berisi detail koneksi VPN Anda.\n\nBelum punya server VPN? Jangan khawatir, ikuti tutorial di bawah ini untuk mengaturnya dengan cepat dan gratis.",
       "helpBtn": {
         "label": "Tunjukkan caranya",
-        "url": "https://github.com/shulaiyun/shulai-VPN.git"
+        "url": "https://github.com/shulaiyun/Sloth-VPN.git"
       }
     },
     "unknownDomainsWarning": {
@@ -641,3 +641,4 @@
     }
   }
 }
+

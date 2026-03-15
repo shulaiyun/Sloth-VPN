@@ -8,7 +8,9 @@ import 'package:hiddify/features/app_gateway/notifier/gateway_portal_controller.
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class GatewayRegisterPage extends HookConsumerWidget {
-  const GatewayRegisterPage({super.key});
+  const GatewayRegisterPage({super.key, this.redirectTo});
+
+  final String? redirectTo;
 
   bool _isSuffixAllowed(String email, GatewayAuthPolicy? policy) {
     if (policy == null || policy.allowedEmailSuffixes.isEmpty) return true;
@@ -146,7 +148,8 @@ class GatewayRegisterPage extends HookConsumerWidget {
             );
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerSucceeded)));
-        context.go("/gateway-account");
+        final target = (redirectTo != null && redirectTo!.startsWith('/')) ? redirectTo! : "/gateway-account";
+        context.go(target);
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         if (error.requiresCaptcha) {

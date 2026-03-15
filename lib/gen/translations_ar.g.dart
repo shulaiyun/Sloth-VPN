@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -906,7 +906,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnAr extends TranslationsDialogsNoA
 
 	// Translations
 	@override String get label => '兀乇賳賷 賰賷賮';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1845,7 +1845,7 @@ extension on TranslationsAr {
 			'dialogs.noActiveProfile.title' => '丕禺鬲乇 賲賱賮賸丕 卮禺氐賷賸丕',
 			'dialogs.noActiveProfile.msg' => '賱賱亘丿亍貙 賯賲 亘廿囟丕賮丞 賲賱賮 丕鬲氐丕賱 賷丨鬲賵賷 毓賱賶 鬲賮丕氐賷賱 丕鬲氐丕賱 VPN 丕賱禺丕氐丞 亘賰.\n\n兀賱賷爻 賱丿賷賰 禺丕丿賲 VPN 亘毓丿責 賱丕 鬲賯賱賯貙 丕鬲亘毓 丕賱丿賱賷賱 兀丿賳丕賴 賱廿毓丿丕丿 賵丕丨丿 亘爻乇毓丞 賵賲噩丕賳賸丕.',
 			'dialogs.noActiveProfile.helpBtn.label' => '兀乇賳賷 賰賷賮',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => '鬲丨匕賷乇 賲賳 乇丕亘胤 禺丕乇噩賷',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => '兀賳鬲 毓賱賶 賵卮賰 夭賷丕乇丞:',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => '賴匕丕 丕賱賲賵賯毓 賱賷爻 囟賲賳 賯丕卅賲丞 丕賱賲賵丕賯毓 丕賱賲賵孬賵賯丞 賱丿賷賳丕. 賷乇噩賶 丕賱賲鬲丕亘毓丞 亘丨匕乇.',
@@ -1904,3 +1904,4 @@ extension on TranslationsAr {
 		};
 	}
 }
+

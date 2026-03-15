@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "appTitle": "树懒VPN",
     "start": "丕亘丿兀",
@@ -568,7 +568,7 @@
       "msg": "賱賱亘丿亍貙 賯賲 亘廿囟丕賮丞 賲賱賮 丕鬲氐丕賱 賷丨鬲賵賷 毓賱賶 鬲賮丕氐賷賱 丕鬲氐丕賱 VPN 丕賱禺丕氐丞 亘賰.\n\n兀賱賷爻 賱丿賷賰 禺丕丿賲 VPN 亘毓丿責 賱丕 鬲賯賱賯貙 丕鬲亘毓 丕賱丿賱賷賱 兀丿賳丕賴 賱廿毓丿丕丿 賵丕丨丿 亘爻乇毓丞 賵賲噩丕賳賸丕.",
       "helpBtn": {
         "label": "兀乇賳賷 賰賷賮",
-        "url": "https://github.com/shulaiyun/shulai-VPN.git"
+        "url": "https://github.com/shulaiyun/Sloth-VPN.git"
       }
     },
     "unknownDomainsWarning": {
@@ -647,3 +647,4 @@
     }
   }
 }
+

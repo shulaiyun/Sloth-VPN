@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>top.shulaiyun.slothvpn</id>
   <metadata_license>CC0-1.0</metadata_license>
@@ -47,9 +47,9 @@
     <mime-type>x-scheme-handler/sing-box</mime-type>
   </mime-types>
 
-  <url type="homepage">https://github.com/shulaiyun/shulai-VPN.git</url>
-  <url type="bugtracker">https://github.com/shulaiyun/shulai-VPN/issues</url>
-  <url type="help">https://github.com/shulaiyun/shulai-VPN.git</url>
+  <url type="homepage">https://github.com/shulaiyun/Sloth-VPN.git</url>
+  <url type="bugtracker">https://github.com/shulaiyun/Sloth-VPN/issues</url>
+  <url type="help">https://github.com/shulaiyun/Sloth-VPN.git</url>
 
   <provides>
     <binary>slothvpn</binary>
@@ -73,3 +73,4 @@
     <value key="Essential">false</value>
   </custom>
 </component>
+

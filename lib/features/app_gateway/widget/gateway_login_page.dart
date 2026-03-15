@@ -9,7 +9,9 @@ import 'package:hiddify/gen/assets.gen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class GatewayLoginPage extends HookConsumerWidget {
-  const GatewayLoginPage({super.key});
+  const GatewayLoginPage({super.key, this.redirectTo});
+
+  final String? redirectTo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,7 +33,8 @@ class GatewayLoginPage extends HookConsumerWidget {
         await ref.read(slothGatewayPortalControllerProvider).login(email: email, password: password);
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginSucceeded)));
-        context.go("/gateway-account");
+        final target = (redirectTo != null && redirectTo!.startsWith('/')) ? redirectTo! : "/gateway-account";
+        context.go(target);
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginFailed(error.message))));

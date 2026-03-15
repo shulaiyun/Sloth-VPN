@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "appTitle": "树懒VPN",
     "start": "Come莽ar",
@@ -562,7 +562,7 @@
       "msg": "Para come莽ar, adicione um perfil de conex茫o que inclua os detalhes da sua conex茫o VPN.\n\nAinda n茫o tem um servidor VPN? N茫o se preocupe, siga o tutorial abaixo para configurar um rapidamente e de gra莽a.",
       "helpBtn": {
         "label": "Mostre-me como",
-        "url": "https://github.com/shulaiyun/shulai-VPN.git"
+        "url": "https://github.com/shulaiyun/Sloth-VPN.git"
       }
     },
     "unknownDomainsWarning": {
@@ -641,3 +641,4 @@
     }
   }
 }
+

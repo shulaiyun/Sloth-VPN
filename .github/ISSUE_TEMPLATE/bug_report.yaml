@@ -16,7 +16,7 @@ body:
     id: confirm-search
     attributes:
       label: Search first
-      description: Please search [existing issues](https://github.com/shulaiyun/shulai-VPN/issues) before reporting.
+      description: Please search [existing issues](https://github.com/shulaiyun/Sloth-VPN/issues) before reporting.
       options:
         - label: I searched and no similar issues were found
           required: true
@@ -111,3 +111,4 @@ body:
         Your contributions are greatly appreciated and play a vital role in helping to improve the project!
       options:
         - label: I'm willing to submit a PR (Thank you!)
+

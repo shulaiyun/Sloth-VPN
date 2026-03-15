@@ -2,7 +2,7 @@
 
 > 基于 Hiddify 深度定制的多平台代理客户端，主打美观、易用与高度可定制化。
 
-[GitHub 仓库](https://github.com/shulaiyun/shulai-VPN) | [Telegram 频道](https://t.me/shulai2026)
+[GitHub 仓库](https://github.com/shulaiyun/Sloth-VPN) | [Telegram 频道](https://t.me/shulai2026)
 
 ## 项目简介
 
@@ -43,7 +43,7 @@
 
 当前仓库首页不再展示旧的下载表或过期下载按钮。
 
-正式版本将在 [GitHub Releases](https://github.com/shulaiyun/shulai-VPN/releases) 提供下载。待 Release 工作流稳定后，Android、Windows 以及后续 Linux/macOS 的构建产物都会在 Releases 页面统一提供。
+正式版本将在 [GitHub Releases](https://github.com/shulaiyun/Sloth-VPN/releases) 提供下载。待 Release 工作流稳定后，Android、Windows 以及后续 Linux/macOS 的构建产物都会在 Releases 页面统一提供。
 
 ## 应用截图
 
@@ -90,9 +90,10 @@
 
 ## 联系方式
 
-- GitHub：<https://github.com/shulaiyun/shulai-VPN>
+- GitHub：<https://github.com/shulaiyun/Sloth-VPN>
 - Telegram：<https://t.me/shulai2026>
 
 ## 免责声明
 
 本项目仅用于合法合规的网络访问、连接管理与技术研究用途。使用者应自行确保其使用方式符合所在地区的法律法规、服务条款及相关政策。因不当使用本项目造成的任何风险与后果，由使用者自行承担。
+

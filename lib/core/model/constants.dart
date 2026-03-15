@@ -7,11 +7,11 @@ abstract class Constants {
     "SLOTH_GATEWAY_BASE_URL",
     defaultValue: "https://gateway.jxjvip.help",
   );
-  static const githubUrl = "https://github.com/shulaiyun/shulai-VPN";
-  static const licenseUrl = "https://github.com/shulaiyun/shulai-VPN/blob/main/LICENSE.md";
-  static const githubReleasesApiUrl = "https://api.github.com/repos/shulaiyun/shulai-VPN/releases";
-  static const githubLatestReleaseUrl = "https://github.com/shulaiyun/shulai-VPN/releases/latest";
-  static const appCastUrl = "https://raw.githubusercontent.com/shulaiyun/shulai-VPN/main/appcast.xml";
+  static const githubUrl = "https://github.com/shulaiyun/Sloth-VPN";
+  static const licenseUrl = "https://github.com/shulaiyun/Sloth-VPN/blob/main/LICENSE.md";
+  static const githubReleasesApiUrl = "https://api.github.com/repos/shulaiyun/Sloth-VPN/releases";
+  static const githubLatestReleaseUrl = "https://github.com/shulaiyun/Sloth-VPN/releases/latest";
+  static const appCastUrl = "https://raw.githubusercontent.com/shulaiyun/Sloth-VPN/main/appcast.xml";
   static const telegramChannelUrl = "https://t.me/shulai2026";
   static const privacyPolicyUrl = githubUrl;
   static const termsAndConditionsUrl = githubUrl;

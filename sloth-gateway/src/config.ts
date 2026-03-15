@@ -38,7 +38,7 @@ export const config = {
   defaultTelegramUrl: process.env.DEFAULT_TELEGRAM_URL ?? "https://t.me/shulai2026",
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "shulaiyun_bot",
   telegramBotUrl: process.env.TELEGRAM_BOT_URL ?? "https://t.me/shulaiyun_bot",
-  defaultGithubUrl: process.env.DEFAULT_GITHUB_URL ?? "https://github.com/shulaiyun/shulai-VPN",
+  defaultGithubUrl: process.env.DEFAULT_GITHUB_URL ?? "https://github.com/shulaiyun/Sloth-VPN",
   defaultTicketUrl: process.env.DEFAULT_TICKET_URL ?? "",
   defaultNoticeUrl: process.env.DEFAULT_NOTICE_URL ?? "",
   inviteCommissionRate: num(process.env.INVITE_COMMISSION_RATE, 20),
@@ -48,3 +48,4 @@ export const config = {
   allowedEmailSuffixes: csv(process.env.AUTH_ALLOWED_EMAIL_SUFFIXES),
   debugBindCode: (process.env.DEBUG_BIND_CODE ?? "false").toLowerCase() === "true",
 };
+

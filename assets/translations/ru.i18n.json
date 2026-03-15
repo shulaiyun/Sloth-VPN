@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "appTitle": "树懒VPN",
     "start": "袧邪褔邪褌褜",
@@ -566,7 +566,7 @@
       "msg": "袛邪胁邪泄褌械 薪邪褔薪械屑 褋 写芯斜邪胁谢械薪懈褟 锌褉芯褎懈谢褟 锌芯写泻谢褞褔械薪懈褟, 泻芯褌芯褉褘泄 褋芯写械褉卸懈褌 写邪薪薪褘械 胁邪褕械谐芯 VPN-褋芯械写懈薪械薪懈褟.\n\n袝褖械 薪械褌 VPN-褋械褉胁械褉邪? 袧械 斜械褋锌芯泻芯泄褌械褋褜 鈥?锌褉芯褋褌芯 褋谢械写褍泄褌械 褉褍泻芯胁芯写褋褌胁褍 薪懈卸械, 褔褌芯斜褘 斜褘褋褌褉芯 懈 斜械褋锌谢邪褌薪芯 薪邪褋褌褉芯懈褌褜 械谐芯.",
       "helpBtn": {
         "label": "袩芯泻邪卸懈褌械, 泻邪泻",
-        "url": "https://github.com/shulaiyun/shulai-VPN.git"
+        "url": "https://github.com/shulaiyun/Sloth-VPN.git"
       }
     },
     "unknownDomainsWarning": {
@@ -645,3 +645,4 @@
     }
   }
 }
+

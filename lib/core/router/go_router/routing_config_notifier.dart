@@ -145,14 +145,20 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
                     GoRoute(
                       name: 'gatewayLogin',
                       path: '/gateway-login',
-                      pageBuilder: (_, state) =>
-                          customTransition(TransitionType.slide, state.pageKey, const GatewayLoginPage()),
+                      pageBuilder: (_, state) => customTransition(
+                        TransitionType.slide,
+                        state.pageKey,
+                        GatewayLoginPage(redirectTo: state.uri.queryParameters['redirect']),
+                      ),
                     ),
                     GoRoute(
                       name: 'gatewayRegister',
                       path: '/gateway-register',
-                      pageBuilder: (_, state) =>
-                          customTransition(TransitionType.slide, state.pageKey, const GatewayRegisterPage()),
+                      pageBuilder: (_, state) => customTransition(
+                        TransitionType.slide,
+                        state.pageKey,
+                        GatewayRegisterPage(redirectTo: state.uri.queryParameters['redirect']),
+                      ),
                     ),
                     GoRoute(
                       name: 'gatewayForgotPassword',
@@ -233,11 +239,7 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
                             GatewayKnowledgeDetailPage(item: extra),
                           );
                         }
-                        return customTransition(
-                          TransitionType.slide,
-                          state.pageKey,
-                          const GatewayKnowledgePage(),
-                        );
+                        return customTransition(TransitionType.slide, state.pageKey, const GatewayKnowledgePage());
                       },
                     ),
                     GoRoute(

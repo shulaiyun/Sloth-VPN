@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -901,7 +901,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnTr extends TranslationsDialogsNoA
 
 	// Translations
 	@override String get label => 'Nas谋l yap谋ld谋臒谋n谋 g枚ster';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1840,7 +1840,7 @@ extension on TranslationsTr {
 			'dialogs.noActiveProfile.title' => 'Bir profil se莽in',
 			'dialogs.noActiveProfile.msg' => 'VPN ba臒lant谋 ayr谋nt谋lar谋n谋z谋 i莽eren bir ba臒lant谋 profili ekleyerek ba艧layal谋m.\n\nHen眉z bir VPN sunucunuz yok mu? Endi艧elenmeyin, h谋zl谋 ve 眉cretsiz bir 艧ekilde kurmak i莽in a艧a臒谋daki e臒itimi takip edin.',
 			'dialogs.noActiveProfile.helpBtn.label' => 'Nas谋l yap谋ld谋臒谋n谋 g枚ster',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => 'D谋艧 ba臒lant谋 uyar谋s谋',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => '艦u adresi ziyaret etmek 眉zeresiniz:',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => 'Bu web sitesi g眉venilir listemizde de臒il. L眉tfen dikkatli devam edin.',
@@ -1899,3 +1899,4 @@ extension on TranslationsTr {
 		};
 	}
 }
+

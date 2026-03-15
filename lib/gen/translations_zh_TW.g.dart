@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -903,7 +903,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnZhTw extends TranslationsDialogsN
 
 	// Translations
 	@override String get label => '告訴我如何操作';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1845,7 +1845,7 @@ extension on TranslationsZhTw {
 			'dialogs.noActiveProfile.title' => '選擇一個設定檔',
 			'dialogs.noActiveProfile.msg' => '讓我們從新增一個包含您 VPN 連線詳細資訊的設定檔開始。\n\n還沒有 VPN 伺服器？別擔心，按照下面的教學，您可以快速免費地設定一個。',
 			'dialogs.noActiveProfile.helpBtn.label' => '告訴我如何操作',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => '外部連結警告',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => '您即將造訪：',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => '此網站不在我們的信任清單中。請謹慎操作。',
@@ -1904,3 +1904,4 @@ extension on TranslationsZhTw {
 		};
 	}
 }
+

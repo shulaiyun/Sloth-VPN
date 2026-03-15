@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -900,7 +900,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnId extends TranslationsDialogsNoA
 
 	// Translations
 	@override String get label => 'Tunjukkan caranya';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1839,7 +1839,7 @@ extension on TranslationsId {
 			'dialogs.noActiveProfile.title' => 'Pilih profil',
 			'dialogs.noActiveProfile.msg' => 'Mari kita mulai dengan menambahkan profil koneksi yang berisi detail koneksi VPN Anda.\n\nBelum punya server VPN? Jangan khawatir, ikuti tutorial di bawah ini untuk mengaturnya dengan cepat dan gratis.',
 			'dialogs.noActiveProfile.helpBtn.label' => 'Tunjukkan caranya',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => 'Peringatan tautan eksternal',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => 'Anda akan mengunjungi:',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => 'Situs web ini tidak ada dalam daftar tepercaya kami. Harap lanjutkan dengan hati-hati.',
@@ -1898,3 +1898,4 @@ extension on TranslationsId {
 		};
 	}
 }
+

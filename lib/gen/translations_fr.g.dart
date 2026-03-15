@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -900,7 +900,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnFr extends TranslationsDialogsNoA
 
 	// Translations
 	@override String get label => 'Montrez-moi comment';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1839,7 +1839,7 @@ extension on TranslationsFr {
 			'dialogs.noActiveProfile.title' => 'Choisissez un profil',
 			'dialogs.noActiveProfile.msg' => 'Pour commencer, ajoutez un profil de connexion qui inclut les d茅tails de votre connexion VPN.\n\nVous n\'avez pas encore de serveur VPN ? Pas de probl猫me, suivez le tutoriel ci-dessous pour en configurer un rapidement et gratuitement.',
 			'dialogs.noActiveProfile.helpBtn.label' => 'Montrez-moi comment',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => 'Avertissement de lien externe',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => 'Vous 锚tes sur le point de visiter :',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => 'Ce site web ne figure pas dans notre liste de confiance. Veuillez proc茅der avec prudence.',
@@ -1898,3 +1898,4 @@ extension on TranslationsFr {
 		};
 	}
 }
+

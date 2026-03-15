@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import 'package:hiddify/core/http_client/dio_http_client.dart';
 import 'package:hiddify/core/http_client/http_client_provider.dart';
 import 'package:hiddify/core/model/region.dart';
@@ -27,7 +27,7 @@ abstract interface class AutoSelectionRepository {
 class AutoSelectionRepositoryImpl with AppLogger implements AutoSelectionRepository {
   AutoSelectionRepositoryImpl({required Ref ref}) : _ref = ref;
   final Ref _ref;
-  static const _baseUrl = 'https://raw.githubusercontent.com/shulaiyun/shulai-VPN/main/Android-GFW-Apps/';
+  static const _baseUrl = 'https://raw.githubusercontent.com/shulaiyun/Sloth-VPN/main/Android-GFW-Apps/';
 
   @override
   Future<(Set<String>?, AutoSelectionResult)> getByAppProxyMode({AppProxyMode? mode, Region? region}) async =>
@@ -77,3 +77,4 @@ class AutoSelectionRepositoryImpl with AppLogger implements AutoSelectionReposit
 
   DioHttpClient _getHttp() => _ref.read(httpClientProvider);
 }
+

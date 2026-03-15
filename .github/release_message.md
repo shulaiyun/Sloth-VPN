@@ -16,10 +16,11 @@
 
 ## 项目链接
 
-- GitHub：<https://github.com/shulaiyun/shulai-VPN>
+- GitHub：<https://github.com/shulaiyun/Sloth-VPN>
 - Telegram：<https://t.me/shulai2026>
 
 ## 备注
 
 - 当前 Release 产物由 GitHub Actions 自动构建并上传。
 - 如某个平台暂未出现在本次 Release 中，通常表示该平台工作流尚在稳定化阶段，或该次发布未启用对应构建任务。
+

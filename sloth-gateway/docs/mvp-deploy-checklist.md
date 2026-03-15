@@ -1,4 +1,4 @@
-# SlothVPN 第一阶段 MVP 部署清单
+﻿# SlothVPN 第一阶段 MVP 部署清单
 
 目标链路：
 
@@ -23,7 +23,7 @@
 5. `BIND_TTL_SECONDS`：默认 `600`
 6. `XBOARD_TIMEOUT_MS`：默认 `15000`
 7. `DEFAULT_TELEGRAM_URL`：默认 `https://t.me/shulai2026`
-8. `DEFAULT_GITHUB_URL`：默认 `https://github.com/shulaiyun/shulai-VPN`
+8. `DEFAULT_GITHUB_URL`：默认 `https://github.com/shulaiyun/Sloth-VPN`
 9. `DEBUG_BIND_CODE`：本地联调可设 `true`，生产建议 `false`
 
 ## 2. XBoard 需要新增的环境变量
@@ -184,4 +184,5 @@ App Link / Universal Link（可选，后续增强）：
 3. XBoard 的 `SLOTH_GATEWAY_PAYMENT_RETURN_URL` 已配置
 4. App 已用 `--dart-define=SLOTH_GATEWAY_BASE_URL=...` 构建
 5. 手机系统允许 `slothvpn://` scheme 回跳
+
 

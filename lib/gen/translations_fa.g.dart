@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -901,7 +901,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnFa extends TranslationsDialogsNoA
 
 	// Translations
 	@override String get label => 'راهنمایی کن';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1840,7 +1840,7 @@ extension on TranslationsFa {
 			'dialogs.noActiveProfile.title' => 'یک پروفایل انتخاب کنید',
 			'dialogs.noActiveProfile.msg' => 'بیایید با افزودن یک پروفایل اتصال که شامل جزئیات اتصال VPN شماست، شروع کنیم.\n\nهنوز سرور VPN ندارید؟ نگران نباشید، با دنبال کردن راهنمای زیر می‌توانید به سرعت و رایگان یکی برای خودتان بسازید.',
 			'dialogs.noActiveProfile.helpBtn.label' => 'راهنمایی کن',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => 'هشدار لینک خارجی',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => 'شما در حال بازدید از این آدرس هستید:',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => 'این وب‌سایت در لیست مورد اعتماد ما نیست. لطفاً با احتیاط ادامه دهید.',
@@ -1899,3 +1899,4 @@ extension on TranslationsFa {
 		};
 	}
 }
+

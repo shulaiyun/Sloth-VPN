@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -904,7 +904,7 @@ class TranslationsDialogsNoActiveProfileHelpBtnRu extends TranslationsDialogsNoA
 
 	// Translations
 	@override String get label => '袩芯泻邪卸懈褌械, 泻邪泻';
-	@override String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	@override String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -1843,7 +1843,7 @@ extension on TranslationsRu {
 			'dialogs.noActiveProfile.title' => '袙褘斜械褉懈褌械 锌褉芯褎懈谢褜',
 			'dialogs.noActiveProfile.msg' => '袛邪胁邪泄褌械 薪邪褔薪械屑 褋 写芯斜邪胁谢械薪懈褟 锌褉芯褎懈谢褟 锌芯写泻谢褞褔械薪懈褟, 泻芯褌芯褉褘泄 褋芯写械褉卸懈褌 写邪薪薪褘械 胁邪褕械谐芯 VPN-褋芯械写懈薪械薪懈褟.\n\n袝褖械 薪械褌 VPN-褋械褉胁械褉邪? 袧械 斜械褋锌芯泻芯泄褌械褋褜 鈥?锌褉芯褋褌芯 褋谢械写褍泄褌械 褉褍泻芯胁芯写褋褌胁褍 薪懈卸械, 褔褌芯斜褘 斜褘褋褌褉芯 懈 斜械褋锌谢邪褌薪芯 薪邪褋褌褉芯懈褌褜 械谐芯.',
 			'dialogs.noActiveProfile.helpBtn.label' => '袩芯泻邪卸懈褌械, 泻邪泻',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => '袩褉械写褍锌褉械卸写械薪懈械 芯 胁薪械褕薪械泄 褋褋褘谢泻械',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => '袙褘 褋芯斜懈褉邪械褌械褋褜 锌械褉械泄褌懈 薪邪 褋邪泄褌:',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => '协褌芯褌 褋邪泄褌 薪械 胁褏芯写懈褌 胁 薪邪褕 褋锌懈褋芯泻 写芯胁械褉械薪薪褘褏. 袩芯卸邪谢褍泄褋褌邪, 写械泄褋褌胁褍泄褌械 褋 芯褋褌芯褉芯卸薪芯褋褌褜褞.',
@@ -1902,3 +1902,4 @@ extension on TranslationsRu {
 		};
 	}
 }
+

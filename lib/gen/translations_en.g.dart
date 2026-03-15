@@ -1,4 +1,4 @@
-///
+﻿///
 /// Generated file. Do not edit.
 ///
 // coverage:ignore-file
@@ -1475,8 +1475,8 @@ class TranslationsDialogsNoActiveProfileHelpBtnEn {
 	/// en: 'Show me how'
 	String get label => 'Show me how';
 
-	/// en: 'https://github.com/shulaiyun/shulai-VPN.git'
-	String get url => 'https://github.com/shulaiyun/shulai-VPN.git';
+	/// en: 'https://github.com/shulaiyun/Sloth-VPN.git'
+	String get url => 'https://github.com/shulaiyun/Sloth-VPN.git';
 }
 
 // Path: common.msg.export.clipboard
@@ -2694,7 +2694,7 @@ extension on Translations {
 			'dialogs.noActiveProfile.title' => 'Choose a profile',
 			'dialogs.noActiveProfile.msg' => 'Let\'s get started by adding a connection profile that includes your VPN connection details.\n\nDon鈥檛 have a VPN server yet? No worries鈥攋ust follow the tutorial below to set one up quickly and for free.',
 			'dialogs.noActiveProfile.helpBtn.label' => 'Show me how',
-			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/shulai-VPN.git',
+			'dialogs.noActiveProfile.helpBtn.url' => 'https://github.com/shulaiyun/Sloth-VPN.git',
 			'dialogs.unknownDomainsWarning.title' => 'External link warning',
 			'dialogs.unknownDomainsWarning.youAreAboutToVisit' => 'You are about to visit :',
 			'dialogs.unknownDomainsWarning.thisWebsiteIsNotInOurTrustedList' => 'This website is not in our trusted list. Please proceed with caution.',
@@ -2755,3 +2755,4 @@ extension on Translations {
 		};
 	}
 }
+

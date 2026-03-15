@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -201,7 +201,7 @@ class PerAppProxy extends _$PerAppProxy with AppLogger {
         '  ',
       ).convert({'addedPkgs': userSelected.toList(), 'removedPkgs': forceDeselected.toList()});
       body = '```\n$body\n```';
-      UriUtils.tryLaunch(Uri.parse('https://github.com/shulaiyun/shulai-VPN/issues/new?title=$title&body=$body'));
+      UriUtils.tryLaunch(Uri.parse('https://github.com/shulaiyun/Sloth-VPN/issues/new?title=$title&body=$body'));
       return true;
     } else {
       ref
@@ -234,3 +234,4 @@ class PerAppProxy extends _$PerAppProxy with AppLogger {
     return const JsonEncoder.withIndent('  ').convert(backup.toJson());
   }
 }
+

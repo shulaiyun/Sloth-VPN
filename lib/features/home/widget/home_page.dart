@@ -572,7 +572,11 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                     label: g.myAccount,
                   )
                 else
-                  FilledButton(onPressed: () => context.push("/home/gateway-login"), child: Text(g.login)),
+                  _GatewayEntryLoginAction(
+                    onPressed: () => context.push("/home/gateway-login"),
+                    icon: const Icon(Icons.login_rounded),
+                    label: g.login,
+                  ),
                 if (_loggedIn)
                   OutlinedButton(
                     onPressed: () => context.go("/gateway-plans"),
@@ -612,6 +616,43 @@ class _GatewayEntryPrimaryAction extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [Color(0xFFFFA7C7), Color(0xFFF277A9), Color(0xFFCF5B96)],
+              ),
+        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
+        boxShadow: disabled ? null : SlothShadows.card,
+      ),
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          shadowColor: Colors.transparent,
+        ),
+      ),
+    );
+  }
+}
+
+class _GatewayEntryLoginAction extends StatelessWidget {
+  const _GatewayEntryLoginAction({required this.onPressed, required this.icon, required this.label});
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: disabled
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF113D84), Color(0xFF2F72D4), Color(0xFF34BFD0)],
               ),
         color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
         boxShadow: disabled ? null : SlothShadows.card,

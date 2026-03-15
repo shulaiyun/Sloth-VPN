@@ -60,9 +60,17 @@ class GatewayPlansPage extends HookConsumerWidget {
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(message),
+          backgroundColor: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.95),
+          content: Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text(message)),
+            ],
+          ),
           duration: duration,
           behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
@@ -73,9 +81,20 @@ class GatewayPlansPage extends HookConsumerWidget {
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(message),
+          backgroundColor: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.97),
+          content: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.warning_amber_rounded, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(message, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
           duration: const Duration(seconds: 9),
           behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           action: SnackBarAction(
             label: isZh ? '查看订单' : 'View Orders',
@@ -840,13 +859,52 @@ class GatewayPlansPage extends HookConsumerWidget {
       body = ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(g.notLoggedIn),
-          const SizedBox(height: 8),
-          Text(g.homeGuide),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF193F7A), Color(0xFF2766BF), Color(0xFF2CA8C9)],
+              ),
+              boxShadow: SlothShadows.card,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                  child: const Icon(Icons.local_fire_department_rounded, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isZh
+                        ? '限时福利：登录后可查看专属折扣与返利活动，支付成功自动同步节点。'
+                        : 'Limited offer: login to unlock discount plans and rebate campaigns.',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
-          FilledButton(onPressed: () => context.push('/home/gateway-login'), child: Text(g.login)),
+          _GatewayPrimaryActionButton(
+            onPressed: () => context.push('/home/gateway-login?redirect=/gateway-plans'),
+            icon: const Icon(Icons.login_rounded),
+            label: g.login,
+          ),
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: () => context.push('/home/gateway-register'), child: Text(g.register)),
+          OutlinedButton(
+            onPressed: () => context.push('/home/gateway-register?redirect=/gateway-plans'),
+            child: Text(g.register),
+          ),
         ],
       );
     } else if (errorText.value != null) {
@@ -866,7 +924,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           if (authExpired) ...[
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => context.push('/home/gateway-login'),
+              onPressed: () => context.push('/home/gateway-login?redirect=/gateway-plans'),
               child: Text(isZh ? '重新登录' : 'Login Again'),
             ),
             const SizedBox(height: 8),

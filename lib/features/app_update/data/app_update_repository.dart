@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hiddify/core/http_client/dio_http_client.dart';
 import 'package:hiddify/core/model/constants.dart';
@@ -77,7 +77,7 @@ class AppUpdateRepositoryImpl with ExceptionHandler, InfraLogger implements AppU
       final fullTag = _extractReleaseTag(response.realUri, response.data?.toString() ?? "");
       if (fullTag == null || fullTag.isEmpty) return null;
 
-      final releaseUrl = "https://github.com/shulaiyun/shulai-VPN/releases/tag/$fullTag";
+      final releaseUrl = "https://github.com/shulaiyun/Sloth-VPN/releases/tag/$fullTag";
       return GithubReleaseParser.parse({
         "tag_name": fullTag,
         "prerelease": fullTag.contains("-"),
@@ -108,3 +108,4 @@ class AppUpdateRepositoryImpl with ExceptionHandler, InfraLogger implements AppU
     return null;
   }
 }
+

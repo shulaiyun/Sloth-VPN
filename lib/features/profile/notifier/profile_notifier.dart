@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -202,10 +202,10 @@ enum AddProfilePages { options, manual }
 @riverpod
 class FreeProfilesNotifier extends _$FreeProfilesNotifier {
   static const _sources = [
-    'https://raw.githubusercontent.com/shulaiyun/shulai-VPN/main/test.configs/free_configs',
-    'https://raw.githubusercontent.com/shulaiyun/shulai-VPN/main/test.configs/free_configs.json',
-    'https://cdn.jsdelivr.net/gh/shulaiyun/shulai-VPN@main/test.configs/free_configs',
-    'https://cdn.jsdelivr.net/gh/shulaiyun/shulai-VPN@main/test.configs/free_configs.json',
+    'https://raw.githubusercontent.com/shulaiyun/Sloth-VPN/main/test.configs/free_configs',
+    'https://raw.githubusercontent.com/shulaiyun/Sloth-VPN/main/test.configs/free_configs.json',
+    'https://cdn.jsdelivr.net/gh/shulaiyun/Sloth-VPN@main/test.configs/free_configs',
+    'https://cdn.jsdelivr.net/gh/shulaiyun/Sloth-VPN@main/test.configs/free_configs.json',
   ];
 
   @override
@@ -268,3 +268,4 @@ Future<List<FreeProfile>> freeProfilesFilteredByRegion(Ref ref) async {
   final region = ref.watch(ConfigOptions.region);
   return freeProfiles.where((e) => e.region.contains(region.name) || e.region.isEmpty).toList();
 }
+

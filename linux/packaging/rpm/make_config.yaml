@@ -1,4 +1,4 @@
-
+﻿
 
 # <<<   RPM NOT SUPPORTED   >>>
 # We decided to remove RPM packaging for the following reasons:
@@ -9,7 +9,7 @@
 
 
 # display_name: 树懒VPN
-# url: https://github.com/shulaiyun/shulai-VPN.git
+# url: https://github.com/shulaiyun/Sloth-VPN.git
 # license: Other
 
 # packager: shulaiyun
@@ -48,3 +48,4 @@
 #   - x-scheme-handler/clash
 #   - x-scheme-handler/clashmeta
 #   - x-scheme-handler/sing-box
+

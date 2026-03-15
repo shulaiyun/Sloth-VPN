@@ -1,4 +1,4 @@
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+﻿import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
@@ -22,8 +22,8 @@ class ProfileTileMain extends HookConsumerWidget {
   ];
   static const verifiedLinks = [
     'https://t.me/shulai2026',
-    'https://github.com/shulaiyun/shulai-VPN',
-    'https://github.com/shulaiyun/shulai-VPN.git',
+    'https://github.com/shulaiyun/Sloth-VPN',
+    'https://github.com/shulaiyun/Sloth-VPN.git',
   ];
   Future<void> _launchUrlWithCheck(BuildContext context, WidgetRef ref, String url) async {
     final uri = Uri.parse(url);
@@ -303,3 +303,4 @@ class _InfoItem extends StatelessWidget {
     );
   }
 }
+

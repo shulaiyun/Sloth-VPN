@@ -46,6 +46,11 @@ class GatewayAccountPage extends HookConsumerWidget {
     return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
   }
 
+  bool _looksMojibake(String? value) {
+    if (value == null || value.trim().isEmpty) return false;
+    return RegExp('[杩锛缁€镐]').hasMatch(value);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
@@ -551,32 +556,53 @@ class GatewayAccountPage extends HookConsumerWidget {
                         ),
                       ],
                     ),
-                    Text('${g.inviteRebateTotal}: ${_formatMoneyFromCent(invite.rebateTotal)}'),
-                    Text('${g.inviteRebatePending}: ${_formatMoneyFromCent(invite.rebatePending)}'),
-                    Text(
-                      '${isZh ? '\u53ef\u63d0\u73b0\u4f63\u91d1' : 'Withdrawable rebate'}: ${_formatMoneyFromCent(invite.rebateAvailable)}',
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _KvChip(label: g.inviteRebateTotal, value: _formatMoneyFromCent(invite.rebateTotal)),
+                        _KvChip(label: g.inviteRebatePending, value: _formatMoneyFromCent(invite.rebatePending)),
+                        _KvChip(
+                          label: isZh ? '\u53ef\u63d0\u73b0\u4f63\u91d1' : 'Withdrawable rebate',
+                          value: _formatMoneyFromCent(invite.rebateAvailable),
+                        ),
+                        _KvChip(
+                          label: isZh ? '\u5df2\u63d0\u73b0\u4f63\u91d1' : 'Withdrawn rebate',
+                          value: _formatMoneyFromCent(invite.rebateWithdrawn),
+                        ),
+                        _KvChip(
+                          label: isZh ? '\u9080\u8bf7\u4eba\u6570' : 'Invited users',
+                          value: invite.invitedCount.toString(),
+                        ),
+                      ],
                     ),
-                    Text(
-                      '${isZh ? '\u5df2\u63d0\u73b0\u4f63\u91d1' : 'Withdrawn rebate'}: ${_formatMoneyFromCent(invite.rebateWithdrawn)}',
-                    ),
-                    Text('${isZh ? '\u9080\u8bf7\u4eba\u6570' : 'Invited users'}: ${invite.invitedCount}'),
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
-                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            theme.colorScheme.primaryContainer.withValues(alpha: 0.22),
+                            theme.colorScheme.secondaryContainer.withValues(alpha: 0.16),
+                          ],
+                        ),
+                        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             isZh
-                                ? '杩斿埄瑙勫垯锛氭€讳剑閲戞瘮渚?${_formatPercent(invite.commissionRate)}锛屼笁绾у垎閿€姣斾緥 L1 ${_formatPercent(invite.commissionLevel1Rate)} / L2 ${_formatPercent(invite.commissionLevel2Rate)} / L3 ${_formatPercent(invite.commissionLevel3Rate)}'
+                                ? '返利规则：总佣金比例 ${_formatPercent(invite.commissionRate)}，三级分销比例 L1 ${_formatPercent(invite.commissionLevel1Rate)} / L2 ${_formatPercent(invite.commissionLevel2Rate)} / L3 ${_formatPercent(invite.commissionLevel3Rate)}'
                                 : 'Commission: ${_formatPercent(invite.commissionRate)}, L1 ${_formatPercent(invite.commissionLevel1Rate)} / L2 ${_formatPercent(invite.commissionLevel2Rate)} / L3 ${_formatPercent(invite.commissionLevel3Rate)}',
+                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                           ),
-                          if ((invite.rebateRuleText ?? '').isNotEmpty) ...[
+                          if ((invite.rebateRuleText ?? '').isNotEmpty && !_looksMojibake(invite.rebateRuleText)) ...[
                             const SizedBox(height: 6),
                             Text('${isZh ? '\u8fd4\u5229\u89c4\u5219\uff1a' : 'Rules: '}${invite.rebateRuleText!}'),
                           ],
@@ -907,6 +933,7 @@ class GatewayInvitePage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
     final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
+    final theme = Theme.of(context);
     final loading = useState(true);
     final invite = useState<GatewayInviteSummary?>(null);
     final error = useState<String?>(null);
@@ -969,20 +996,45 @@ class GatewayInvitePage extends HookConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text('${g.inviteRebateTotal}: ${_formatMoneyFromCent(i.rebateTotal)}'),
-                  Text('${g.inviteRebatePending}: ${_formatMoneyFromCent(i.rebatePending)}'),
-                  Text(
-                    '${isZh ? '\u53ef\u63d0\u73b0\u4f63\u91d1' : 'Withdrawable rebate'}: ${_formatMoneyFromCent(i.rebateAvailable)}',
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _KvChip(label: g.inviteRebateTotal, value: _formatMoneyFromCent(i.rebateTotal)),
+                      _KvChip(label: g.inviteRebatePending, value: _formatMoneyFromCent(i.rebatePending)),
+                      _KvChip(
+                        label: isZh ? '\u53ef\u63d0\u73b0\u4f63\u91d1' : 'Withdrawable rebate',
+                        value: _formatMoneyFromCent(i.rebateAvailable),
+                      ),
+                      _KvChip(
+                        label: isZh ? '\u5df2\u63d0\u73b0\u4f63\u91d1' : 'Withdrawn rebate',
+                        value: _formatMoneyFromCent(i.rebateWithdrawn),
+                      ),
+                      _KvChip(label: g.inviteCount, value: i.invitedCount.toString()),
+                    ],
                   ),
-                  Text(
-                    '${isZh ? '\u5df2\u63d0\u73b0\u4f63\u91d1' : 'Withdrawn rebate'}: ${_formatMoneyFromCent(i.rebateWithdrawn)}',
-                  ),
-                  Text('${g.inviteCount}: ${i.invitedCount}'),
                   const SizedBox(height: 8),
-                  Text(
-                    isZh
-                        ? '杩斿埄瑙勫垯锛氭€讳剑閲戞瘮渚?${_formatPercent(i.commissionRate)}锛屼笁绾у垎閿€姣斾緥 L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}'
-                        : 'Commission: ${_formatPercent(i.commissionRate)}, L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}',
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.primaryContainer.withValues(alpha: 0.22),
+                          theme.colorScheme.secondaryContainer.withValues(alpha: 0.16),
+                        ],
+                      ),
+                      border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Text(
+                      isZh
+                          ? '返利规则：总佣金比例 ${_formatPercent(i.commissionRate)}，三级分销比例 L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}'
+                          : 'Commission: ${_formatPercent(i.commissionRate)}, L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   if ((i.inviteCode ?? '').isEmpty)
