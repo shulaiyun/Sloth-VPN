@@ -78,7 +78,7 @@ class GatewayPlansPage extends HookConsumerWidget {
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           action: SnackBarAction(
-            label: isZh ? '鍘昏鍗曢〉' : 'View Orders',
+            label: isZh ? '查看订单' : 'View Orders',
             onPressed: () {
               tabIndex.value = 1;
               orderStatusFilter.value = 'pending';
@@ -230,7 +230,7 @@ class GatewayPlansPage extends HookConsumerWidget {
       if (!context.mounted) return;
       await context.push(
         '/gateway-account/webview',
-        extra: <String, String>{'url': target, 'title': isZh ? '鏀粯璁㈠崟 $orderNo' : 'Pay Order $orderNo'},
+        extra: <String, String>{'url': target, 'title': isZh ? '支付订单 $orderNo' : 'Pay Order $orderNo'},
       );
 
       if (!context.mounted) return;
@@ -289,10 +289,10 @@ class GatewayPlansPage extends HookConsumerWidget {
               children: [
                 Text(g.orderDetail, style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
-                kv(isZh ? 'Order No' : 'Order No', order.orderNo),
+                kv(isZh ? '订单号' : 'Order No', order.orderNo),
                 kv(g.orderType, order.typeLabel.isEmpty ? order.type : order.typeLabel),
-                kv(isZh ? 'Status' : 'Status', g.orderStatusLabel(order.status)),
-                kv(isZh ? '鍛ㄦ湡' : 'Period', g.periodLabel(order.period ?? '', order.period ?? '-')),
+                kv(isZh ? '状态' : 'Status', g.orderStatusLabel(order.status)),
+                kv(isZh ? '周期' : 'Period', g.periodLabel(order.period ?? '', order.period ?? '-')),
                 if (order.planTransferEnable != null && (order.planTransferEnable ?? 0) > 0)
                   kv(g.planTraffic, _presentTraffic(order.planTransferEnable!)),
                 kv(g.orderAmount, _presentPrice(order.totalAmount)),
@@ -355,7 +355,7 @@ class GatewayPlansPage extends HookConsumerWidget {
         }
         if (error.code == 'ORDER_PAYMENT_CHANNEL_EXPIRED') {
           showTip(
-            isZh ? 'Payment channel expired, recreate order first' : 'Payment channel expired, recreate order first',
+            isZh ? '支付通道失效，请先重建订单' : 'Payment channel expired, recreate order first',
             duration: const Duration(seconds: 8),
           );
           return;
@@ -417,7 +417,7 @@ class GatewayPlansPage extends HookConsumerWidget {
       final period = order.period?.trim() ?? '';
       final planId = order.planId;
       if (planId == null || planId <= 0 || period.isEmpty) {
-        showTip(isZh ? '璇ヨ鍗曠己灏戝椁愪俊鎭紝鏃犳硶閲嶅缓' : 'Order missing plan data, cannot recreate');
+        showTip(isZh ? '该订单缺少套餐信息，无法重建' : 'Order missing plan data, cannot recreate');
         return;
       }
       runningOrderNo.value = order.orderNo;
@@ -437,7 +437,7 @@ class GatewayPlansPage extends HookConsumerWidget {
             showTip(g.orderCompletedAndSynced, duration: const Duration(seconds: 8));
           } else {
             showTip(
-              isZh ? 'Order recreated, payment confirmation pending' : 'Order recreated, payment confirmation pending',
+              isZh ? '订单已重建，支付结果确认中' : 'Order recreated, payment confirmation pending',
               duration: const Duration(seconds: 8),
             );
           }
@@ -463,9 +463,7 @@ class GatewayPlansPage extends HookConsumerWidget {
     Future<bool> confirmBeforeBuy(GatewayPlan plan, String period) async {
       final currentPlan = summary.value?.planName?.trim();
       final isRenew = currentPlan != null && currentPlan.isNotEmpty && currentPlan == plan.name.trim();
-      final title = isRenew
-          ? (isZh ? '缁垂纭' : 'Renew Confirmation')
-          : (isZh ? '鍒囨崲濂楅纭' : 'Plan Change Confirmation');
+      final title = isRenew ? (isZh ? '续费确认' : 'Renew Confirmation') : (isZh ? '切换套餐确认' : 'Plan Change Confirmation');
       final lines = <String>['1. ${g.renewRulesSamePlan}', '2. ${g.renewRulesUpgrade}', '3. ${g.renewRulesRefund}'];
       final selectedPeriod = plan.periods.firstWhere(
         (item) => item.code == period,
@@ -475,11 +473,11 @@ class GatewayPlansPage extends HookConsumerWidget {
       final amountText = _presentPrice(selectedPeriod.price);
       final content = StringBuffer()
         ..writeln(
-          '${isZh ? '褰撳墠濂楅' : 'Current plan'}: ${currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan}',
+          '${isZh ? '当前套餐' : 'Current plan'}: ${currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan}',
         )
-        ..writeln('${isZh ? '鐩爣濂楅' : 'Target plan'}: ${plan.name}')
-        ..writeln('${isZh ? '璐拱鍛ㄦ湡' : 'Billing cycle'}: $periodLabel')
-        ..writeln('${isZh ? '璁㈠崟閲戦' : 'Order amount'}: $amountText')
+        ..writeln('${isZh ? '目标套餐' : 'Target plan'}: ${plan.name}')
+        ..writeln('${isZh ? '购买周期' : 'Billing cycle'}: $periodLabel')
+        ..writeln('${isZh ? '订单金额' : 'Order amount'}: $amountText')
         ..writeln()
         ..writeln(lines.join('\n'));
 
@@ -489,8 +487,8 @@ class GatewayPlansPage extends HookConsumerWidget {
           title: Text(title),
           content: Text(content.toString()),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '鍙栨秷' : 'Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '纭涓嬪崟' : 'Confirm')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '取消' : 'Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '确认下单' : 'Confirm')),
           ],
         ),
       );
@@ -660,7 +658,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (!plan.sell) Chip(label: Text(isZh ? '鏆傚仠鍞崠' : 'Unavailable')),
+                        if (!plan.sell) Chip(label: Text(isZh ? '暂停售卖' : 'Unavailable')),
                       ],
                     ),
                     if (plan.description.isNotEmpty) ...[
@@ -749,7 +747,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                 onTap: () => orderStatusFilter.value = 'expired',
               ),
               _OrderFilterChip(
-                label: isZh ? 'Closed' : 'Closed',
+                label: isZh ? '已关闭' : 'Closed',
                 selected: orderStatusFilter.value == 'closed',
                 onTap: () => orderStatusFilter.value = 'closed',
               ),
@@ -780,9 +778,9 @@ class GatewayPlansPage extends HookConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text('${isZh ? 'Order' : 'Order'}: ${order.orderNo}'),
+                      Text('${isZh ? '订单号' : 'Order'}: ${order.orderNo}'),
                       Text('${g.orderType}: ${order.typeLabel.isEmpty ? order.type : order.typeLabel}'),
-                      Text('${isZh ? '鍛ㄦ湡' : 'Period'}: ${g.periodLabel(order.period ?? '', order.period ?? '-')}'),
+                      Text('${isZh ? '周期' : 'Period'}: ${g.periodLabel(order.period ?? '', order.period ?? '-')}'),
                       if (order.planTransferEnable != null && (order.planTransferEnable ?? 0) > 0)
                         Text('${g.planTraffic}: ${_presentTraffic(order.planTransferEnable!)}'),
                       Text('${g.orderAmount}: ${_presentPrice(order.totalAmount)}'),
@@ -811,7 +809,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                             _GatewayOutlineActionButton(
                               onPressed: busy ? null : () => closeAndRecreateOrder(order),
                               icon: const Icon(Icons.autorenew_rounded, size: 18),
-                              label: isZh ? 'Recreate Order' : 'Recreate Order',
+                              label: isZh ? '重建订单' : 'Recreate Order',
                             ),
                           _GatewayOutlineActionButton(
                             onPressed: busy ? null : () => refreshOrderStatus(order),
@@ -854,7 +852,7 @@ class GatewayPlansPage extends HookConsumerWidget {
     } else if (errorText.value != null) {
       final errorLower = errorText.value?.toLowerCase() ?? '';
       final authExpired =
-          (errorText.value?.contains('鐧诲綍鐘舵€佸凡澶辨晥') ?? false) ||
+          (errorText.value?.contains('登录状态已失效') ?? false) ||
           errorLower.contains('unauthorized') ||
           errorLower.contains('session') ||
           errorLower.contains('invalid access token') ||
@@ -869,17 +867,17 @@ class GatewayPlansPage extends HookConsumerWidget {
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => context.push('/home/gateway-login'),
-              child: Text(isZh ? '閲嶆柊鐧诲綍' : 'Login Again'),
+              child: Text(isZh ? '重新登录' : 'Login Again'),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () async {
                 await ref.read(slothGatewayPortalControllerProvider).logout();
                 if (!context.mounted) return;
-                showTip(isZh ? 'Logged out' : 'Logged out');
+                showTip(isZh ? '已退出当前账号' : 'Logged out');
                 await load();
               },
-              child: Text(isZh ? 'Logout' : 'Logout'),
+              child: Text(isZh ? '退出当前账号' : 'Logout'),
             ),
           ],
         ],

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hiddify/core/theme/sloth_design_tokens.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_l10n.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_portal_controller.dart';
+import 'package:hiddify/gen/assets.gen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class GatewayLoginPage extends HookConsumerWidget {
@@ -45,7 +47,7 @@ class GatewayLoginPage extends HookConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.verified_user_rounded, color: theme.colorScheme.primary),
+            SizedBox(width: 20, height: 20, child: Assets.images.logo.svg()),
             const SizedBox(width: 8),
             Text(g.loginTitle),
           ],
@@ -110,10 +112,10 @@ class GatewayLoginPage extends HookConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
+          _GatewayLoginPrimaryAction(
             onPressed: isLoading.value ? null : submit,
             icon: Icon(isLoading.value ? Icons.hourglass_top_rounded : Icons.login_rounded),
-            label: Text(isLoading.value ? g.loggingIn : g.loginButton),
+            label: isLoading.value ? g.loggingIn : g.loginButton,
           ),
           const SizedBox(height: 8),
           TextButton(
@@ -125,9 +127,50 @@ class GatewayLoginPage extends HookConsumerWidget {
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: isLoading.value ? null : () => context.push("/home/gateway-register"),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.24)),
+            ),
             child: Text(g.createAccountButton),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GatewayLoginPrimaryAction extends StatelessWidget {
+  const _GatewayLoginPrimaryAction({required this.onPressed, required this.icon, required this.label});
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: disabled
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF113D84), Color(0xFF2F72D4), Color(0xFF34BFD0)],
+              ),
+        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
+        boxShadow: disabled ? null : SlothShadows.card,
+      ),
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+        ),
       ),
     );
   }

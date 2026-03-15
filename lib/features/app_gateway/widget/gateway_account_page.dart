@@ -137,7 +137,9 @@ class GatewayAccountPage extends HookConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(ok ? (isZh ? 'Invite code generated' : 'Invite code generated') : g.inviteNotAvailable),
+            content: Text(
+              ok ? (isZh ? '\u9080\u8bf7\u7801\u5df2\u751f\u6210' : 'Invite code generated') : g.inviteNotAvailable,
+            ),
           ),
         );
         await load();
@@ -169,18 +171,18 @@ class GatewayAccountPage extends HookConsumerWidget {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(isZh ? '鐢宠鎻愮幇' : 'Withdraw'),
+          title: Text(isZh ? '\u7533\u8bf7\u63d0\u73b0' : 'Withdraw'),
           content: TextField(
             controller: amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: isZh ? 'Amount (CNY)' : 'Amount (CNY)',
+              labelText: isZh ? '\u63d0\u73b0\u91d1\u989d(CNY)' : 'Amount (CNY)',
               border: const OutlineInputBorder(),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '鍙栨秷' : 'Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '鎻愪氦' : 'Submit')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '\u53d6\u6d88' : 'Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '\u63d0\u4ea4' : 'Submit')),
           ],
         ),
       );
@@ -189,16 +191,18 @@ class GatewayAccountPage extends HookConsumerWidget {
       final amountYuan = double.tryParse(amountController.text.trim());
       if (amountYuan == null || amountYuan <= 0) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isZh ? 'Invalid amount' : 'Invalid amount')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(isZh ? '\u91d1\u989d\u683c\u5f0f\u4e0d\u6b63\u786e' : 'Invalid amount')));
         return;
       }
 
       try {
         await ref.read(slothGatewayPortalControllerProvider).requestInviteWithdraw(amountYuan * 100);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(isZh ? 'Withdraw request submitted' : 'Withdraw request submitted')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isZh ? '\u63d0\u73b0\u7533\u8bf7\u5df2\u63d0\u4ea4' : 'Withdraw request submitted')),
+        );
         await load();
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
@@ -206,14 +210,17 @@ class GatewayAccountPage extends HookConsumerWidget {
         final msg = error.message.toLowerCase();
         final shouldFallbackWeb =
             (manageUrl != null && manageUrl.isNotEmpty) &&
-            (msg.contains('鏆備笉鏀寔') ||
+            (msg.contains('\u6682\u4e0d\u652f\u6301') ||
                 msg.contains('not support') ||
                 msg.contains('unsupported') ||
                 error.code == 'UPSTREAM_ERROR');
         if (shouldFallbackWeb) {
           await context.push(
             '/gateway-account/webview',
-            extra: <String, String>{'url': manageUrl, 'title': isZh ? 'Rebate & Withdraw' : 'Rebate & Withdraw'},
+            extra: <String, String>{
+              'url': manageUrl,
+              'title': isZh ? '\u8fd4\u5229\u4e0e\u63d0\u73b0' : 'Rebate & Withdraw',
+            },
           );
           return;
         }
@@ -285,7 +292,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                   const SizedBox(height: 6),
                   Text(
                     isZh
-                        ? '娴侀噺浣跨敤杩涘害锛?{(usageRate * 100).toStringAsFixed(1)}%'
+                        ? '\u6d41\u91cf\u4f7f\u7528\u8fdb\u5ea6\uff1a${(usageRate * 100).toStringAsFixed(1)}%'
                         : 'Traffic usage: ${(usageRate * 100).toStringAsFixed(1)}%',
                     style: theme.textTheme.bodySmall,
                   ),
@@ -446,7 +453,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                       ),
                       child: Text(
                         isZh
-                            ? 'Join affiliate partner program and earn multi-level rebates.'
+                            ? '\u52a0\u5165\u63a8\u5e7f\u5408\u4f5c\u8ba1\u5212\uff0c\u652f\u6301\u591a\u7ea7\u8fd4\u5229\u5206\u6210\u3002'
                             : 'Join affiliate partner program and earn multi-level rebates.',
                         style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                       ),
@@ -524,7 +531,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                     const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: ensureInviteCode,
-                      child: Text(isZh ? '灏濊瘯鐢熸垚閭€璇风爜' : 'Try generate invite code'),
+                      child: Text(isZh ? '\u5c1d\u8bd5\u751f\u6210\u9080\u8bf7\u7801' : 'Try generate invite code'),
                     ),
                   ] else ...[
                     Text('${g.inviteCode}: ${invite.inviteCode ?? '--'}'),
@@ -547,12 +554,12 @@ class GatewayAccountPage extends HookConsumerWidget {
                     Text('${g.inviteRebateTotal}: ${_formatMoneyFromCent(invite.rebateTotal)}'),
                     Text('${g.inviteRebatePending}: ${_formatMoneyFromCent(invite.rebatePending)}'),
                     Text(
-                      '${isZh ? 'Withdrawable rebate' : 'Withdrawable rebate'}: ${_formatMoneyFromCent(invite.rebateAvailable)}',
+                      '${isZh ? '\u53ef\u63d0\u73b0\u4f63\u91d1' : 'Withdrawable rebate'}: ${_formatMoneyFromCent(invite.rebateAvailable)}',
                     ),
                     Text(
-                      '${isZh ? 'Withdrawn rebate' : 'Withdrawn rebate'}: ${_formatMoneyFromCent(invite.rebateWithdrawn)}',
+                      '${isZh ? '\u5df2\u63d0\u73b0\u4f63\u91d1' : 'Withdrawn rebate'}: ${_formatMoneyFromCent(invite.rebateWithdrawn)}',
                     ),
-                    Text('${isZh ? '閭€璇风爜浜烘暟' : 'Invited users'}: ${invite.invitedCount}'),
+                    Text('${isZh ? '\u9080\u8bf7\u4eba\u6570' : 'Invited users'}: ${invite.invitedCount}'),
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
@@ -571,7 +578,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                           ),
                           if ((invite.rebateRuleText ?? '').isNotEmpty) ...[
                             const SizedBox(height: 6),
-                            Text('${isZh ? 'Rules: ' : 'Rules: '}${invite.rebateRuleText!}'),
+                            Text('${isZh ? '\u8fd4\u5229\u89c4\u5219\uff1a' : 'Rules: '}${invite.rebateRuleText!}'),
                           ],
                         ],
                       ),
@@ -625,7 +632,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   if (notices.value.isEmpty)
-                    Text(isZh ? '鏆傛棤鍏憡' : 'No notices')
+                    Text(isZh ? '\u6682\u65e0\u516c\u544a' : 'No notices')
                   else
                     ...notices.value.map(
                       (item) => ListTile(
@@ -656,7 +663,9 @@ class GatewayAccountPage extends HookConsumerWidget {
                   leading: const Icon(Icons.school_rounded),
                   title: Text(g.openKnowledge),
                   subtitle: Text(
-                    isZh ? '瀹夊崜 / iPhone / Windows / macOS / Linux' : 'Android / iOS / Windows / macOS / Linux',
+                    isZh
+                        ? '\u5b89\u5353 / iPhone / Windows / macOS / Linux'
+                        : 'Android / iOS / Windows / macOS / Linux',
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/gateway-account/knowledge'),
@@ -705,12 +714,38 @@ class GatewayAccountPage extends HookConsumerWidget {
         ],
       );
     } else if (summary.value == null) {
+      final errLower = (errorText.value ?? '').toLowerCase();
+      final authExpired =
+          (errorText.value?.contains('\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548') ?? false) ||
+          errLower.contains('unauthorized') ||
+          errLower.contains('invalid access token') ||
+          errLower.contains('token expired') ||
+          errLower.contains('session');
       content = ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text('${g.viewAccountFailed}: ${errorText.value ?? g.unknownError}'),
           const SizedBox(height: 12),
           FilledButton(onPressed: load, child: Text(g.retry)),
+          if (authExpired) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => context.push('/home/gateway-login'),
+              child: Text(isZh ? '\u91cd\u65b0\u767b\u5f55' : 'Login Again'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () async {
+                await ref.read(slothGatewayPortalControllerProvider).logout();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isZh ? '\u5df2\u9000\u51fa\u5f53\u524d\u8d26\u53f7' : 'Logged out')),
+                );
+                await load();
+              },
+              child: Text(isZh ? '\u9000\u51fa\u5f53\u524d\u8d26\u53f7' : 'Logout'),
+            ),
+          ],
         ],
       );
     } else {
@@ -719,14 +754,37 @@ class GatewayAccountPage extends HookConsumerWidget {
         child: Column(
           children: [
             const SizedBox(height: 8),
-            TabBar(
-              tabs: [
-                Tab(
-                  icon: SizedBox(width: 18, height: 18, child: Assets.images.logo.svg()),
-                  text: isZh ? '\u8d26\u6237\u9875' : 'Account',
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.28)),
+              ),
+              child: TabBar(
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF6C2BD9), Color(0xFFD946EF), Color(0xFFFF6A4D)],
+                  ),
+                  boxShadow: SlothShadows.card,
                 ),
-                Tab(icon: const Icon(Icons.local_offer_rounded), text: isZh ? '\u670d\u52a1\u9875' : 'Service'),
-              ],
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                labelStyle: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                tabs: [
+                  Tab(
+                    icon: SizedBox(width: 18, height: 18, child: Assets.images.logo.svg()),
+                    text: isZh ? '\u8d26\u6237\u9875' : 'Account',
+                  ),
+                  Tab(icon: const Icon(Icons.local_offer_rounded), text: isZh ? '\u670d\u52a1\u9875' : 'Service'),
+                ],
+              ),
             ),
             Expanded(child: TabBarView(children: [accountTab(summary.value!), serviceTab()])),
           ],
@@ -914,9 +972,11 @@ class GatewayInvitePage extends HookConsumerWidget {
                   Text('${g.inviteRebateTotal}: ${_formatMoneyFromCent(i.rebateTotal)}'),
                   Text('${g.inviteRebatePending}: ${_formatMoneyFromCent(i.rebatePending)}'),
                   Text(
-                    '${isZh ? 'Withdrawable rebate' : 'Withdrawable rebate'}: ${_formatMoneyFromCent(i.rebateAvailable)}',
+                    '${isZh ? '\u53ef\u63d0\u73b0\u4f63\u91d1' : 'Withdrawable rebate'}: ${_formatMoneyFromCent(i.rebateAvailable)}',
                   ),
-                  Text('${isZh ? 'Withdrawn rebate' : 'Withdrawn rebate'}: ${_formatMoneyFromCent(i.rebateWithdrawn)}'),
+                  Text(
+                    '${isZh ? '\u5df2\u63d0\u73b0\u4f63\u91d1' : 'Withdrawn rebate'}: ${_formatMoneyFromCent(i.rebateWithdrawn)}',
+                  ),
                   Text('${g.inviteCount}: ${i.invitedCount}'),
                   const SizedBox(height: 8),
                   Text(
@@ -935,7 +995,7 @@ class GatewayInvitePage extends HookConsumerWidget {
                             SnackBar(
                               content: Text(
                                 generated
-                                    ? (isZh ? 'Invite code generated' : 'Invite code generated')
+                                    ? (isZh ? '\u9080\u8bf7\u7801\u5df2\u751f\u6210' : 'Invite code generated')
                                     : g.inviteNotAvailable,
                               ),
                             ),
@@ -946,7 +1006,7 @@ class GatewayInvitePage extends HookConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
                         }
                       },
-                      child: Text(isZh ? '鐢熸垚閭€璇风爜' : 'Generate invite code'),
+                      child: Text(isZh ? '\u751f\u6210\u9080\u8bf7\u7801' : 'Generate invite code'),
                     ),
                 ],
               ),

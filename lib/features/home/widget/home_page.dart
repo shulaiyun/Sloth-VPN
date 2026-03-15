@@ -222,7 +222,7 @@ class _ConnectionHeaderCard extends StatelessWidget {
     final delayText = delay <= 0
         ? "--"
         : delay > 65000
-        ? (isZh ? "瓒呮椂" : "timeout")
+        ? (isZh ? "超时" : "timeout")
         : "${delay}ms";
 
     return Container(
@@ -275,7 +275,7 @@ class _ConnectionHeaderCard extends StatelessWidget {
               Expanded(
                 child: _StatMini(
                   icon: SlothIconType.server,
-                  label: isZh ? "鑺傜偣" : "Node",
+                  label: isZh ? "节点" : "Node",
                   value: _cleanNodeLabel(activeNode),
                   leading: activeCountryCode == null || activeCountryCode!.trim().isEmpty
                       ? null
@@ -284,7 +284,7 @@ class _ConnectionHeaderCard extends StatelessWidget {
               ),
               const Gap(8),
               Expanded(
-                child: _StatMini(icon: SlothIconType.latency, label: isZh ? "寤惰繜" : "Latency", value: delayText),
+                child: _StatMini(icon: SlothIconType.latency, label: isZh ? "延迟" : "Latency", value: delayText),
               ),
             ],
           ),
@@ -483,16 +483,25 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
             ),
             const SizedBox(height: 4),
             if (_loggedIn) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
+              Row(
                 children: [
-                  _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
-                  _MiniStatusTile(label: g.homeExpireAt, value: _formatIsoTime(_summary?.expiredAt)),
-                  _TrafficMiniStatusTile(
-                    label: g.homeRemainingTraffic,
-                    value: _formatTraffic(trafficRemaining),
-                    remainingRate: trafficRemainingRate,
+                  Expanded(
+                    flex: 3,
+                    child: _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    flex: 4,
+                    child: _MiniStatusTile(label: g.homeExpireAt, value: _formatIsoTime(_summary?.expiredAt)),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    flex: 3,
+                    child: _TrafficMiniStatusTile(
+                      label: g.homeRemainingTraffic,
+                      value: _formatTraffic(trafficRemaining),
+                      remainingRate: trafficRemainingRate,
+                    ),
                   ),
                 ],
               ),
@@ -539,7 +548,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                     Expanded(
                       child: Text(
                         isZh
-                            ? 'New users get a 3-day free trial after registration, then auto sync starts after login.'
+                            ? '新用户专享：注册后免费送三天的使用时长，登录后会自动同步节点'
                             : 'New users get a 3-day free trial after registration, then auto sync starts after login.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w800,
@@ -567,7 +576,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 if (_loggedIn)
                   OutlinedButton(
                     onPressed: () => context.go("/gateway-plans"),
-                    child: Text(isZh ? "璐拱 / 缁垂" : "Buy / Renew"),
+                    child: Text(isZh ? "查看套餐 / 快速续费" : "Buy / Renew"),
                   )
                 else
                   OutlinedButton(onPressed: () => context.push("/home/gateway-register"), child: Text(g.register)),
