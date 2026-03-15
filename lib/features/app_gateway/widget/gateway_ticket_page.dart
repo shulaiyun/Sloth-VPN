@@ -25,6 +25,16 @@ class GatewayTicketPage extends HookConsumerWidget {
     final loading = useState(true);
     final error = useState<String?>(null);
     final tickets = useState<List<GatewayTicketItem>>(<GatewayTicketItem>[]);
+    final localVisibleUntil = useState<Map<String, DateTime>>(<String, DateTime>{});
+
+    String ticketKey(GatewayTicketItem item) {
+      if (item.id > 0) return 'id:${item.id}';
+      return 'subject:${item.subject.trim().toLowerCase()}';
+    }
+
+    void keepVisible(GatewayTicketItem item, {Duration duration = const Duration(minutes: 10)}) {
+      localVisibleUntil.value = {...localVisibleUntil.value, ticketKey(item): DateTime.now().add(duration)};
+    }
 
     List<GatewayTicketItem> mergeTickets(List<GatewayTicketItem> remote, List<GatewayTicketItem> local) {
       if (local.isEmpty) return remote;
@@ -50,12 +60,21 @@ class GatewayTicketPage extends HookConsumerWidget {
       try {
         final remote = await ref.read(slothGatewayPortalControllerProvider).fetchTickets();
         final now = DateTime.now();
+        final visibleMap = Map<String, DateTime>.from(localVisibleUntil.value)
+          ..removeWhere((_, expireAt) => now.isAfter(expireAt));
+        localVisibleUntil.value = visibleMap;
         final localRecent = tickets.value.where((item) {
-          if (item.id <= 0) return true;
-          final updatedAt = DateTime.tryParse(item.updatedAt ?? item.createdAt ?? "");
-          if (updatedAt == null) return false;
-          return now.difference(updatedAt).inSeconds <= 180;
+          final expireAt = visibleMap[ticketKey(item)];
+          return expireAt != null && expireAt.isAfter(now);
         }).toList();
+        if (remote.isNotEmpty) {
+          final nextVisibleMap = Map<String, DateTime>.from(localVisibleUntil.value);
+          final expireAt = DateTime.now().add(const Duration(minutes: 2));
+          for (final item in remote) {
+            nextVisibleMap[ticketKey(item)] = expireAt;
+          }
+          localVisibleUntil.value = nextVisibleMap;
+        }
         tickets.value = mergeTickets(remote, localRecent);
       } on GatewayApiException catch (e) {
         error.value = e.message;
@@ -99,6 +118,7 @@ class GatewayTicketPage extends HookConsumerWidget {
               if (!sheetContext.mounted) return;
               Navigator.pop(sheetContext);
               if (updated != null) {
+                keepVisible(updated);
                 tickets.value = [updated, ...tickets.value.where((item) => item.id != updated.id)];
               } else {
                 await load();
@@ -142,6 +162,8 @@ class GatewayTicketPage extends HookConsumerWidget {
                         : item,
                   )
                   .toList();
+              final closed = tickets.value.firstWhere((item) => item.id == ticket.id, orElse: () => ticket);
+              keepVisible(closed);
               if (!sheetContext.mounted) return;
               Navigator.pop(sheetContext);
               await load();
@@ -309,6 +331,7 @@ class GatewayTicketPage extends HookConsumerWidget {
         if (!context.mounted) return;
 
         if (created != null) {
+          keepVisible(created);
           tickets.value = [created, ...tickets.value.where((item) => item.id != created.id)];
           ScaffoldMessenger.of(
             context,

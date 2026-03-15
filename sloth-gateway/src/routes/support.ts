@@ -149,15 +149,122 @@ const mapTicketError = (error: unknown): never => {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+type NormalizedTicket = ReturnType<typeof normalizeTicket>;
+type CachedTicket = {
+  ticket: NormalizedTicket;
+  touchedAt: number;
+};
+
+const TICKET_CACHE_TTL_MS = 10 * 60 * 1000;
+const TICKET_CACHE_MAX_ITEMS = 40;
+const ticketCacheBySession = new Map<string, CachedTicket[]>();
+
+const ticketTimeMs = (ticket: NormalizedTicket): number => {
+  const updated = Date.parse(toText(ticket.updated_at));
+  if (Number.isFinite(updated)) return updated;
+  const created = Date.parse(toText(ticket.created_at));
+  return Number.isFinite(created) ? created : 0;
+};
+
+const ticketIdentity = (ticket: NormalizedTicket): string => {
+  const id = toNumber(ticket.id);
+  if (id > 0) return `id:${id}`;
+  return `subject:${toText(ticket.subject).toLowerCase()}|created:${toText(ticket.created_at)}`;
+};
+
+const listCachedTickets = (sid: string): CachedTicket[] => {
+  const now = Date.now();
+  const current = ticketCacheBySession.get(sid) ?? [];
+  const alive = current.filter((item) => now - item.touchedAt <= TICKET_CACHE_TTL_MS);
+  if (alive.length !== current.length) {
+    ticketCacheBySession.set(sid, alive);
+  }
+  return alive;
+};
+
+const findCachedTicketById = (sid: string, id: number): NormalizedTicket | null => {
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const cache = listCachedTickets(sid);
+  for (const item of cache) {
+    if (toNumber(item.ticket.id) === id) return item.ticket;
+  }
+  return null;
+};
+
+const rememberTicket = (sid: string, ticket: NormalizedTicket): void => {
+  const now = Date.now();
+  const identity = ticketIdentity(ticket);
+  const cache = listCachedTickets(sid);
+  const next = cache.map((item) => ({ ...item }));
+  const existingIndex = next.findIndex((item) => ticketIdentity(item.ticket) === identity);
+  if (existingIndex >= 0) {
+    const existing = next[existingIndex].ticket;
+    const existingMessages = Array.isArray(existing.messages) ? existing.messages.length : 0;
+    const nextMessages = Array.isArray(ticket.messages) ? ticket.messages.length : 0;
+    next[existingIndex] = {
+      ticket: nextMessages >= existingMessages ? ticket : existing,
+      touchedAt: now,
+    };
+  } else {
+    next.unshift({ ticket, touchedAt: now });
+  }
+  next.sort((a, b) => b.touchedAt - a.touchedAt);
+  ticketCacheBySession.set(sid, next.slice(0, TICKET_CACHE_MAX_ITEMS));
+};
+
+const forceCloseTicket = (ticket: NormalizedTicket): NormalizedTicket => ({
+  ...ticket,
+  status_code: 1,
+  status: "closed",
+  can_reply: false,
+  can_close: false,
+  updated_at: new Date().toISOString(),
+});
+
+const mergeRemoteWithCache = (sid: string, remoteTickets: NormalizedTicket[]): NormalizedTicket[] => {
+  const cache = listCachedTickets(sid);
+  if (cache.length === 0) return remoteTickets;
+
+  const merged = [...remoteTickets];
+  const remoteIdentities = new Set(remoteTickets.map(ticketIdentity));
+  const remoteIds = new Set(remoteTickets.map((item) => toNumber(item.id)).filter((id) => id > 0));
+  const now = Date.now();
+
+  for (const cached of cache) {
+    const age = now - cached.touchedAt;
+    if (age > TICKET_CACHE_TTL_MS) continue;
+    const identity = ticketIdentity(cached.ticket);
+    if (remoteIdentities.has(identity)) {
+      continue;
+    }
+    if (toNumber(cached.ticket.id) > 0 && remoteIds.has(toNumber(cached.ticket.id))) {
+      continue;
+    }
+    merged.unshift(cached.ticket);
+  }
+
+  merged.sort((a, b) => {
+    const diff = ticketTimeMs(b) - ticketTimeMs(a);
+    if (diff !== 0) return diff;
+    return toNumber(b.id) - toNumber(a.id);
+  });
+  return merged;
+};
+
 export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): void => {
   app.get("/api/app/v1/support/tickets", async (request, reply) => {
     const session = requireSession(request, deps.sessions);
-    const tickets = await deps.xboard
+    const remote = await deps.xboard
       .getTickets(session.xboardAuthData)
       .catch((error: unknown): never => mapTicketError(error));
+    const normalizedRemote = remote.map(normalizeTicket);
+    for (const ticket of normalizedRemote) {
+      rememberTicket(session.sid, ticket);
+    }
+    const merged = mergeRemoteWithCache(session.sid, normalizedRemote);
     return ok(reply, {
-      tickets: tickets.map(normalizeTicket),
-      total: tickets.length,
+      tickets: merged,
+      total: merged.length,
       fetched_at: new Date().toISOString(),
     });
   });
@@ -175,8 +282,10 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
     if (!detail) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, "工单不存在");
     }
+    const normalized = normalizeTicket(detail);
+    rememberTicket(session.sid, normalized);
     return ok(reply, {
-      ticket: normalizeTicket(detail),
+      ticket: normalized,
       fetched_at: new Date().toISOString(),
     });
   });
@@ -250,10 +359,12 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
       ],
     } as Record<string, unknown>;
 
+    const normalized = normalizeTicket(createdTicket ?? syntheticTicket);
+    rememberTicket(session.sid, normalized);
     return ok(reply, {
       created: true,
       latest_ticket_id: created.ticketId ?? (tickets.length > 0 ? toNumber(tickets[0].id) : null),
-      ticket: normalizeTicket(createdTicket ?? syntheticTicket),
+      ticket: normalized,
       fetched_at: new Date().toISOString(),
     });
   });
@@ -273,9 +384,13 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
     const detail = await deps.xboard
       .getTicketDetail(session.xboardAuthData, id)
       .catch((error: unknown): never => mapTicketError(error));
+    const normalized = detail ? normalizeTicket(detail) : null;
+    if (normalized) {
+      rememberTicket(session.sid, normalized);
+    }
     return ok(reply, {
       replied: true,
-      ticket: detail ? normalizeTicket(detail) : null,
+      ticket: normalized,
       replied_at: new Date().toISOString(),
     });
   });
@@ -304,9 +419,22 @@ export const registerSupportRoutes = (app: FastifyInstance, deps: SupportDeps): 
         }
       }
     }
+    let normalized = detail == null ? null : normalizeTicket(detail);
+    if (normalized != null && normalized.status_code !== 1) {
+      normalized = forceCloseTicket(normalized);
+    }
+    if (normalized == null) {
+      const cached = findCachedTicketById(session.sid, id);
+      if (cached != null) {
+        normalized = forceCloseTicket(cached);
+      }
+    }
+    if (normalized != null) {
+      rememberTicket(session.sid, normalized);
+    }
     return ok(reply, {
       closed: true,
-      ticket: detail == null ? null : normalizeTicket(detail),
+      ticket: normalized,
       closed_at: new Date().toISOString(),
     });
   });

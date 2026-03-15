@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -38,6 +40,7 @@ class GatewayPlansPage extends HookConsumerWidget {
     final selectedPeriods = useState<Map<int, String>>({});
     final runningPlanId = useState<int?>(null);
     final runningOrderNo = useState<String?>(null);
+    final watchingOrderNos = useState<Set<String>>(<String>{});
     final orderStatusFilter = useState<String>('all');
     final tabIndex = useState<int>(0);
     final errorText = useState<String?>(null);
@@ -109,6 +112,38 @@ class GatewayPlansPage extends HookConsumerWidget {
       await load();
     }
 
+    Future<void> watchOrderSettlement(String orderNo) async {
+      if (watchingOrderNos.value.contains(orderNo)) return;
+      watchingOrderNos.value = {...watchingOrderNos.value, orderNo};
+      try {
+        final portal = ref.read(slothGatewayPortalControllerProvider);
+        for (final delay in const [
+          Duration(seconds: 3),
+          Duration(seconds: 5),
+          Duration(seconds: 8),
+          Duration(seconds: 12),
+          Duration(seconds: 18),
+          Duration(seconds: 25),
+        ]) {
+          await Future.delayed(delay);
+          if (!context.mounted) return;
+          try {
+            final status = await portal.orderStatus(orderNo);
+            if (status.isCompleted) {
+              await syncAfterSuccess();
+              if (!context.mounted) return;
+              showTip(g.orderCompletedAndSynced, duration: const Duration(seconds: 8));
+              return;
+            }
+          } on GatewayApiException {
+            // keep waiting
+          }
+        }
+      } finally {
+        watchingOrderNos.value = {...watchingOrderNos.value}..remove(orderNo);
+      }
+    }
+
     Future<void> openPaymentTarget(String target, String orderNo) async {
       if (target.isEmpty) {
         if (!context.mounted) return;
@@ -123,23 +158,34 @@ class GatewayPlansPage extends HookConsumerWidget {
         return;
       }
 
-      // Payment providers often block embedded webviews; try in-app webview mode first.
-      try {
-        final openedInAppWebView = await launchUrl(uri, mode: LaunchMode.inAppWebView);
-        if (openedInAppWebView) {
-          if (!context.mounted) return;
-          showTip(isZh ? '支付窗口已打开，请完成支付后返回应用刷新状态' : 'Payment window opened, return to refresh status');
-          return;
-        }
-      } catch (_) {
-        // Try browser view below.
-      }
-
       try {
         final openedInAppBrowser = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
         if (openedInAppBrowser) {
           if (!context.mounted) return;
-          showTip(isZh ? '支付窗口已打开，请完成支付后返回应用刷新状态' : 'Payment window opened, return to refresh status');
+          showTip(
+            isZh
+                ? '支付页已在应用内安全浏览器打开，请完成支付后返回应用，订单将自动刷新'
+                : 'Payment opened in app browser, return and order will auto refresh',
+            duration: const Duration(seconds: 8),
+          );
+          unawaited(watchOrderSettlement(orderNo));
+          return;
+        }
+      } catch (_) {
+        // fallback below
+      }
+
+      try {
+        final openedExternal = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (openedExternal) {
+          if (!context.mounted) return;
+          showTip(
+            isZh
+                ? '支付页已在系统浏览器打开，请完成支付后返回应用，订单将自动刷新'
+                : 'Payment opened in system browser, return and order will auto refresh',
+            duration: const Duration(seconds: 8),
+          );
+          unawaited(watchOrderSettlement(orderNo));
           return;
         }
       } catch (_) {
@@ -153,7 +199,8 @@ class GatewayPlansPage extends HookConsumerWidget {
       );
 
       if (!context.mounted) return;
-      showTip(g.paymentPageOpened(orderNo));
+      showTip(g.paymentPageOpened(orderNo), duration: const Duration(seconds: 8));
+      unawaited(watchOrderSettlement(orderNo));
     }
 
     Future<bool> verifyCompletedAndSync(String orderNo) async {
@@ -241,11 +288,17 @@ class GatewayPlansPage extends HookConsumerWidget {
             showTip(g.orderCompletedAndSynced);
             return;
           }
-          showTip(isZh ? '支付结果确认中，请稍后点“刷新状态”' : 'Payment is being confirmed, please refresh status');
+          showTip(
+            isZh ? '支付结果确认中，订单将在后台自动刷新，也可稍后手动点“刷新状态”' : 'Payment is being confirmed and will auto refresh',
+            duration: const Duration(seconds: 8),
+          );
         }
         final paymentTarget = (payment.paymentUrl ?? payment.paymentData).trim();
         if (paymentTarget.isNotEmpty) {
           await openPaymentTarget(paymentTarget, order.orderNo);
+        } else if (!payment.completed) {
+          if (!context.mounted) return;
+          showTip(g.noPaymentUrl);
         }
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
@@ -366,12 +419,18 @@ class GatewayPlansPage extends HookConsumerWidget {
             tabIndex.value = 1;
             return;
           }
-          showTip(isZh ? '支付结果确认中，请稍后点“刷新状态”' : 'Payment is being confirmed, please refresh status');
+          showTip(
+            isZh ? '支付结果确认中，订单将在后台自动刷新，也可稍后手动点“刷新状态”' : 'Payment is being confirmed and will auto refresh',
+            duration: const Duration(seconds: 8),
+          );
         }
 
         final paymentTarget = (payment.paymentUrl ?? payment.paymentData).trim();
         if (paymentTarget.isNotEmpty) {
           await openPaymentTarget(paymentTarget, orderNo);
+        } else if (!payment.completed) {
+          if (!context.mounted) return;
+          showTip(g.noPaymentUrl);
         }
         tabIndex.value = 1;
         await load();
