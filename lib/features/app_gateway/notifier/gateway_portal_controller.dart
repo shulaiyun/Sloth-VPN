@@ -119,7 +119,7 @@ class SlothGatewayPortalController with AppLogger {
     await _tryAutoSync("auth_login");
   }
 
-  Future<void> register({
+  Future<GatewayBindExchangeResult> register({
     required String email,
     required String password,
     String? emailCode,
@@ -144,6 +144,7 @@ class SlothGatewayPortalController with AppLogger {
     );
     _notifyUiRefresh();
     await _tryAutoSync("auth_register");
+    return result;
   }
 
   Future<void> forgotPassword({required String email, required String newPassword, required String emailCode}) async {

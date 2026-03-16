@@ -138,7 +138,7 @@ class GatewayRegisterPage extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        await ref
+        final result = await ref
             .read(slothGatewayPortalControllerProvider)
             .register(
               email: email,
@@ -147,7 +147,15 @@ class GatewayRegisterPage extends HookConsumerWidget {
               inviteCode: inviteCodeController.text.trim(),
             );
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerSucceeded)));
+        final reward = result.inviteReward;
+        final rewardMessage = reward == null
+            ? g.registerSucceeded
+            : (reward.granted && reward.message.trim().isNotEmpty)
+                ? '${g.registerSucceeded}\n${reward.message.trim()}'
+                : (reward.attempted && reward.message.trim().isNotEmpty)
+                    ? '${g.registerSucceeded}\n${reward.message.trim()}'
+                    : g.registerSucceeded;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(rewardMessage)));
         final target = (redirectTo != null && redirectTo!.startsWith('/')) ? redirectTo! : "/gateway-account";
         context.go(target);
       } on GatewayApiException catch (error) {

@@ -38,6 +38,7 @@ class GatewayBindExchangeResult {
     required this.sessionId,
     this.userEmail,
     this.userUuid,
+    this.inviteReward,
   });
 
   final String accessToken;
@@ -45,15 +46,47 @@ class GatewayBindExchangeResult {
   final String sessionId;
   final String? userEmail;
   final String? userUuid;
+  final GatewayInviteRewardResult? inviteReward;
 
   factory GatewayBindExchangeResult.fromMap(Map<String, dynamic> map) {
     final user = _asMap(map["user"]);
+    final inviteRewardRaw = map["invite_reward"];
     return GatewayBindExchangeResult(
       accessToken: map["access_token"]?.toString() ?? "",
       refreshToken: map["refresh_token"]?.toString() ?? "",
       sessionId: map["session_id"]?.toString() ?? "",
       userEmail: _asNullableString(user["email"]),
       userUuid: _asNullableString(user["uuid"]),
+      inviteReward: inviteRewardRaw is Map ? GatewayInviteRewardResult.fromMap(_asMap(inviteRewardRaw)) : null,
+    );
+  }
+}
+
+class GatewayInviteRewardResult {
+  GatewayInviteRewardResult({
+    required this.enabled,
+    required this.attempted,
+    required this.granted,
+    required this.message,
+    required this.mode,
+    this.giftCardCodeMasked,
+  });
+
+  final bool enabled;
+  final bool attempted;
+  final bool granted;
+  final String message;
+  final String mode;
+  final String? giftCardCodeMasked;
+
+  factory GatewayInviteRewardResult.fromMap(Map<String, dynamic> map) {
+    return GatewayInviteRewardResult(
+      enabled: map["enabled"] == true,
+      attempted: map["attempted"] == true,
+      granted: map["granted"] == true,
+      message: map["message"]?.toString().trim() ?? "",
+      mode: map["mode"]?.toString().trim() ?? "none",
+      giftCardCodeMasked: _asNullableString(map["gift_card_code_masked"]),
     );
   }
 }
@@ -177,6 +210,19 @@ class GatewayOrderItem {
 
   bool get isPaid => status == "completed" || status == "discounted";
   bool get isPayable => status == "pending" || status == "processing";
+  int get effectiveSurplusDeduction {
+    final value = surplusAmount - refundAmount;
+    return value > 0 ? value : 0;
+  }
+
+  int get originalAmount {
+    final value = totalAmount + balanceAmount + discountAmount + effectiveSurplusDeduction;
+    return value > 0 ? value : totalAmount;
+  }
+
+  bool get hasPromoDiscount => discountAmount > 0;
+  bool get hasGiftOrBalanceDeduction => balanceAmount > 0;
+  bool get hasOldPlanOffset => effectiveSurplusDeduction > 0;
 
   factory GatewayOrderItem.fromMap(Map<String, dynamic> map) {
     return GatewayOrderItem(

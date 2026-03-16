@@ -581,6 +581,109 @@ const tokenResponse = (issued: ReturnType<typeof issueSessionTokenSet>) => ({
   },
 });
 
+type InviteSignupRewardResult = {
+  enabled: boolean;
+  attempted: boolean;
+  granted: boolean;
+  message: string;
+  mode: "gift_card" | "none";
+  gift_card_code_masked?: string | null;
+};
+
+const maskGiftCardCode = (raw: string): string => {
+  const text = raw.trim();
+  if (text.length <= 6) return `${text.slice(0, 2)}***`;
+  return `${text.slice(0, 3)}***${text.slice(-3)}`;
+};
+
+const tryGrantInviteSignupReward = async (input: {
+  xboard: XboardAdapter;
+  authData: string;
+  inviteCode: string;
+  logger: { info: (obj: Record<string, unknown>) => void; warn: (obj: Record<string, unknown>) => void };
+}): Promise<InviteSignupRewardResult> => {
+  if (!config.inviteSignupRewardEnabled) {
+    return {
+      enabled: false,
+      attempted: false,
+      granted: false,
+      message: "",
+      mode: "none",
+    };
+  }
+
+  if (config.inviteSignupRewardRequireInviteCode && input.inviteCode.trim().length <= 0) {
+    return {
+      enabled: true,
+      attempted: false,
+      granted: false,
+      message: "未检测到邀请码，本次注册未触发邀请奖励",
+      mode: "none",
+    };
+  }
+
+  const pool = config.inviteSignupRewardGiftCardCodes;
+  if (pool.length <= 0) {
+    input.logger.warn({
+      evt: "invite_signup_reward_empty_pool",
+      reason: "INVITE_SIGNUP_REWARD_GIFT_CARD_CODES is empty",
+    });
+    return {
+      enabled: true,
+      attempted: true,
+      granted: false,
+      message: config.inviteSignupRewardFallbackText,
+      mode: "none",
+    };
+  }
+
+  for (const code of pool) {
+    const trimmedCode = code.trim();
+    if (!trimmedCode) continue;
+    try {
+      await input.xboard.redeemGiftCard({ authData: input.authData, code: trimmedCode });
+      const masked = maskGiftCardCode(trimmedCode);
+      input.logger.info({
+        evt: "invite_signup_reward_granted",
+        code_masked: masked,
+      });
+      return {
+        enabled: true,
+        attempted: true,
+        granted: true,
+        message: config.inviteSignupRewardSuccessText,
+        mode: "gift_card",
+        gift_card_code_masked: masked,
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        input.logger.warn({
+          evt: "invite_signup_reward_redeem_failed",
+          code_masked: maskGiftCardCode(trimmedCode),
+          status_code: error.statusCode,
+          error_code: error.code,
+          error_message: error.message,
+        });
+      } else {
+        input.logger.warn({
+          evt: "invite_signup_reward_redeem_failed",
+          code_masked: maskGiftCardCode(trimmedCode),
+          error_message: String(error),
+        });
+      }
+      continue;
+    }
+  }
+
+  return {
+    enabled: true,
+    attempted: true,
+    granted: false,
+    message: config.inviteSignupRewardFallbackText,
+    mode: "none",
+  };
+};
+
 export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): void => {
   const configuredAllowedSuffixes = normalizeEmailSuffixes(config.allowedEmailSuffixes);
 
@@ -692,6 +795,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
     const body = (request.body ?? {}) as Record<string, unknown>;
     const email = normalizeEmail(String(body.email ?? ""));
     const password = String(body.password ?? "").trim();
+    const inviteCode = typeof body.invite_code === "string" ? body.invite_code.trim() : "";
     if (!email || !password) {
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "email and password are required");
     }
@@ -704,13 +808,20 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
     const registered = await deps.xboard
       .register(email, password, {
         emailCode: typeof body.email_code === "string" ? body.email_code : undefined,
-        inviteCode: typeof body.invite_code === "string" ? body.invite_code : undefined,
+        inviteCode: inviteCode || undefined,
         captchaData: typeof body.captcha_data === "string" ? body.captcha_data : undefined,
         recaptchaData: typeof body.recaptcha_data === "string" ? body.recaptcha_data : undefined,
         turnstileData: typeof body.turnstile_data === "string" ? body.turnstile_data : undefined,
         hcaptchaData: typeof body.hcaptcha_data === "string" ? body.hcaptcha_data : undefined,
       })
       .catch((error): never => mapUpstreamAuthError(error, { email, operation: "register" }));
+
+    const inviteReward = await tryGrantInviteSignupReward({
+      xboard: deps.xboard,
+      authData: registered.authData,
+      inviteCode,
+      logger: request.log,
+    });
 
     const [user, subscribe] = await Promise.all([
       deps.xboard.getUserInfo(registered.authData),
@@ -730,6 +841,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: AuthRouteDeps): v
         plan_name: subscribe.plan?.name ?? null,
         expired_at: subscribe.expired_at ?? null,
       },
+      invite_reward: inviteReward,
     });
   });
 

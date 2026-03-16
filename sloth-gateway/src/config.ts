@@ -15,6 +15,14 @@ const csv = (v: string | undefined): string[] => {
     .filter((item) => item.length > 0);
 };
 
+const csvRaw = (v: string | undefined): string[] => {
+  if (!v) return [];
+  return v
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+};
+
 const normalizeBaseUrl = (value: string | undefined, fallback: string): string => {
   const raw = (value ?? fallback).trim().replace(/\/$/, "");
   // Accept both host root and accidentally provided /api/v1,/api/v2 suffixes.
@@ -45,6 +53,13 @@ export const config = {
   inviteLevel1Rate: num(process.env.INVITE_LEVEL1_RATE, 50),
   inviteLevel2Rate: num(process.env.INVITE_LEVEL2_RATE, 50),
   inviteLevel3Rate: num(process.env.INVITE_LEVEL3_RATE, 50),
+  inviteSignupRewardEnabled: (process.env.INVITE_SIGNUP_REWARD_ENABLED ?? "false").toLowerCase() === "true",
+  inviteSignupRewardRequireInviteCode: (process.env.INVITE_SIGNUP_REWARD_REQUIRE_INVITE_CODE ?? "true").toLowerCase() !== "false",
+  inviteSignupRewardGiftCardCodes: csvRaw(process.env.INVITE_SIGNUP_REWARD_GIFT_CARD_CODES),
+  inviteSignupRewardSuccessText:
+    process.env.INVITE_SIGNUP_REWARD_SUCCESS_TEXT ?? "邀请注册奖励已到账：赠送 3 天时长与 10GB 流量（以站点实际礼品卡配置为准）",
+  inviteSignupRewardFallbackText:
+    process.env.INVITE_SIGNUP_REWARD_FALLBACK_TEXT ?? "邀请码注册成功，奖励发放中，请稍后在账户中心刷新查看",
   allowedEmailSuffixes: csv(process.env.AUTH_ALLOWED_EMAIL_SUFFIXES),
   debugBindCode: (process.env.DEBUG_BIND_CODE ?? "false").toLowerCase() === "true",
 };
