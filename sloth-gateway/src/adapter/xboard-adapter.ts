@@ -79,6 +79,14 @@ type XboardNoticePayload = {
 export class XboardAdapter {
   constructor(private readonly baseUrl: string, private readonly timeoutMs: number) {}
 
+  private static readonly subscriptionClientCandidates: Array<{ ua: string; flag?: string }> = [
+    { ua: "sing-box 1.10.0", flag: "sing-box" },
+    { ua: "Hiddify/2.0", flag: "hiddify" },
+    { ua: "v2rayNG/1.10.0", flag: "v2rayng" },
+    { ua: "Clash.Meta/1.18.0", flag: "clash-meta" },
+    { ua: "SlothVPN-Gateway/0.1.0" },
+  ];
+
   private async fetchJson(
     method: "GET" | "POST",
     path: string,
@@ -651,7 +659,7 @@ export class XboardAdapter {
   }
 
   async fetchSubscriptionContent(subscribeUrl: string): Promise<{ raw: string; version: string; nodeCount: number }> {
-    const text = await this.fetchText(subscribeUrl);
+    const text = await this.fetchBestSubscriptionText(subscribeUrl);
     const normalized = text.replace(/^\uFEFF/, "").trim();
     if (!normalized) {
       throw new AppError(502, ErrorCodes.UPSTREAM_ERROR, "Subscription content is empty");
@@ -840,19 +848,24 @@ export class XboardAdapter {
   }
 
   private async fetchText(url: string): Promise<string> {
+    return this.fetchTextWithUa(url, "SlothVPN-Gateway/0.1.0");
+  }
+
+  private async fetchTextWithUa(url: string, userAgent: string, flag?: string): Promise<string> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await fetch(url, {
+      const requestUrl = this.withClientFlag(url, flag);
+      const response = await fetch(requestUrl, {
         headers: {
-          "User-Agent": "SlothVPN-Gateway/0.1.0",
+          "User-Agent": userAgent,
           Accept: "*/*",
         },
         signal: controller.signal,
       });
       if (!response.ok) {
         throw new AppError(response.status || 502, ErrorCodes.UPSTREAM_ERROR, "Subscription pull failed", {
-          url,
+          url: requestUrl,
           status: response.status,
         });
       }
@@ -868,22 +881,182 @@ export class XboardAdapter {
     }
   }
 
-  private estimateNodeCount(content: string): number {
-    try {
-      const parsed = JSON.parse(content) as { outbounds?: Array<{ type?: string }> };
-      if (Array.isArray(parsed.outbounds)) {
-        return parsed.outbounds.filter((item) => {
-          const t = item.type ?? "";
-          return !["selector", "urltest", "direct", "block", "dns"].includes(t);
-        }).length;
+  private async fetchBestSubscriptionText(url: string): Promise<string> {
+    let best: {
+      text: string;
+      ua: string;
+      nodeCount: number;
+      schemeCount: number;
+      score: number;
+      looksJson: boolean;
+    } | null = null;
+    let lastError: unknown;
+
+    for (const candidateSpec of XboardAdapter.subscriptionClientCandidates) {
+      const { ua, flag } = candidateSpec;
+      try {
+        const text = await this.fetchTextWithUa(url, ua, flag);
+        const analyzed = this.analyzeSubscriptionText(text);
+        const candidate = { text, ua, ...analyzed };
+        if (this.isBetterSubscriptionCandidate(candidate, best)) {
+          best = candidate;
+        }
+
+        // Good-enough early stop to reduce provider rate-limit pressure.
+        if (
+          candidate.nodeCount >= 16 ||
+          (candidate.nodeCount >= 8 && (candidate.schemeCount >= 2 || candidate.looksJson))
+        ) {
+          break;
+        }
+      } catch (error) {
+        lastError = error;
       }
-    } catch {
-      // ignore JSON parse error
     }
 
-    return content
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => /^(ss|vmess|vless|trojan|tuic|hy2|hysteria2|hysteria):\/\//i.test(line)).length;
+    if (best) return best.text;
+    if (lastError instanceof AppError) throw lastError;
+    throw new AppError(502, ErrorCodes.UPSTREAM_ERROR, "Subscription pull error", lastError ?? { url });
+  }
+
+  private analyzeSubscriptionText(text: string): {
+    nodeCount: number;
+    schemeCount: number;
+    score: number;
+    looksJson: boolean;
+  } {
+    const normalized = text.replace(/^\uFEFF/, "").trim();
+    if (!normalized) {
+      return { nodeCount: 0, schemeCount: 0, score: 0, looksJson: false };
+    }
+
+    const direct = this.scanSubscriptionText(normalized);
+    if (direct.nodeCount > 0 || direct.looksJson) return direct;
+
+    const decoded = this.tryDecodeBase64(normalized);
+    if (!decoded) return direct;
+    const decodedScan = this.scanSubscriptionText(decoded);
+    // Prefer decoded metrics if they reveal actual node content.
+    if (decodedScan.nodeCount > 0 || decodedScan.looksJson) {
+      return {
+        ...decodedScan,
+        score: decodedScan.score + 8,
+      };
+    }
+    return direct;
+  }
+
+  private scanSubscriptionText(text: string): {
+    nodeCount: number;
+    schemeCount: number;
+    score: number;
+    looksJson: boolean;
+  } {
+    const proxySchemes = new Set<string>();
+    let looksJson = false;
+    let nodeCount = 0;
+
+    try {
+      const parsed = JSON.parse(text) as { outbounds?: Array<{ type?: string }> };
+      if (Array.isArray(parsed.outbounds)) {
+        looksJson = true;
+        for (const item of parsed.outbounds) {
+          const type = (item?.type ?? "").toLowerCase();
+          if (!type || ["selector", "urltest", "direct", "block", "dns"].includes(type)) continue;
+          nodeCount += 1;
+          proxySchemes.add(type);
+        }
+      }
+    } catch {
+      // keep fallback line scan
+    }
+
+    if (nodeCount === 0) {
+      const lines = text.split(/\r?\n/).map((line) => line.trim());
+      for (const line of lines) {
+        if (!line || line.startsWith("#") || line.startsWith("//")) continue;
+        const m = /^([a-zA-Z0-9+.-]+):\/\//.exec(line);
+        if (!m) continue;
+        const scheme = m[1].toLowerCase();
+        if (
+          [
+            "ss",
+            "ssr",
+            "vmess",
+            "vless",
+            "trojan",
+            "tuic",
+            "hy2",
+            "hysteria2",
+            "hysteria",
+            "hy",
+            "shadowtls",
+            "wg",
+            "wireguard",
+            "ssh",
+            "naive",
+            "anytls",
+            "mieru",
+            "warp",
+            "socks",
+            "socks5",
+            "http",
+            "https",
+          ].includes(scheme)
+        ) {
+          nodeCount += 1;
+          proxySchemes.add(scheme);
+        }
+      }
+    }
+
+    const schemeCount = proxySchemes.size;
+    const looksLikeHtml = /^<!doctype html|^<html/i.test(text.trimLeft());
+    let score = nodeCount * 10 + schemeCount * 5;
+    if (looksJson) score += 4;
+    if (looksLikeHtml) score -= 1000;
+
+    return { nodeCount, schemeCount, score, looksJson };
+  }
+
+  private isBetterSubscriptionCandidate(
+    candidate: { nodeCount: number; schemeCount: number; score: number; text: string },
+    current: { nodeCount: number; schemeCount: number; score: number; text: string } | null,
+  ): boolean {
+    if (!current) return true;
+    if (candidate.nodeCount !== current.nodeCount) return candidate.nodeCount > current.nodeCount;
+    if (candidate.schemeCount !== current.schemeCount) return candidate.schemeCount > current.schemeCount;
+    if (candidate.score !== current.score) return candidate.score > current.score;
+    return candidate.text.length > current.text.length;
+  }
+
+  private tryDecodeBase64(value: string): string | null {
+    const compact = value.replace(/\s+/g, "");
+    if (compact.length < 24) return null;
+    if (compact.length % 4 !== 0) return null;
+    if (!/^[A-Za-z0-9+/=]+$/.test(compact)) return null;
+    try {
+      const decoded = Buffer.from(compact, "base64").toString("utf8").trim();
+      return decoded.length > 0 ? decoded : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private withClientFlag(url: string, flag?: string): string {
+    if (!flag) return url;
+    try {
+      const parsed = new URL(url);
+      if (!parsed.searchParams.has("flag")) {
+        parsed.searchParams.set("flag", flag);
+      }
+      return parsed.toString();
+    } catch {
+      return url;
+    }
+  }
+
+  private estimateNodeCount(content: string): number {
+    return this.analyzeSubscriptionText(content).nodeCount;
   }
 }

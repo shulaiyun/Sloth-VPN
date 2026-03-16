@@ -70,6 +70,15 @@ class ProfileParser with InfraLogger {
     'wireguard',
     'wg',
     'ssh',
+    'shadowtls',
+    'naive',
+    'anytls',
+    'mieru',
+    'warp',
+    'socks',
+    'socks5',
+    'http',
+    'https',
   };
   static const allowedOverrideConfigs = [
     'connection-test-url',
