@@ -32,6 +32,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   FLUTTER_VERSION: "3.38.5"
   BUILD_TARGET: "lib/main.dart"
+  HIDDIFY_CORE_VERSION: "v4.1.0"
+  HIDDIFY_CORE_RELEASE_BASE: "https://github.com/hiddify/hiddify-core/releases/download"
 
 jobs:
   android:
@@ -47,12 +49,24 @@ jobs:
         with:
           lfs: false
 
-      - name: Pull required LFS assets
+      - name: Download required core assets
         shell: bash
         run: |
           set -euo pipefail
-          git lfs version
-          git lfs pull --include="android/app/libs/hiddify-core.aar" --exclude=""
+          url="${{ env.HIDDIFY_CORE_RELEASE_BASE }}/${{ env.HIDDIFY_CORE_VERSION }}/hiddify-lib-android.tar.gz"
+          workdir="$(mktemp -d)"
+          archive="$workdir/hiddify-lib-android.tar.gz"
+          extract_dir="$workdir/extract"
+          mkdir -p "$extract_dir" android/app/libs
+          curl -fL --retry 5 --retry-delay 6 --retry-all-errors "$url" -o "$archive"
+          tar -xzf "$archive" -C "$extract_dir"
+          aar_path="$(find "$extract_dir" -type f -name 'hiddify-core.aar' | head -n 1 || true)"
+          if [ -z "$aar_path" ]; then
+            echo "::error::hiddify-core.aar not found in downloaded archive: $url"
+            find "$extract_dir" -maxdepth 4 -type f | sed 's#^#  #'
+            exit 1
+          fi
+          cp -f "$aar_path" android/app/libs/hiddify-core.aar
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -130,11 +144,23 @@ jobs:
         with:
           lfs: false
 
-      - name: Pull required LFS assets
+      - name: Download required core assets
         shell: pwsh
         run: |
-          git lfs version
-          git lfs pull --include="hiddify-core/bin/hiddify-core.dll" --exclude=""
+          $url = "${{ env.HIDDIFY_CORE_RELEASE_BASE }}/${{ env.HIDDIFY_CORE_VERSION }}/hiddify-lib-windows-amd64.tar.gz"
+          $workdir = Join-Path $env:RUNNER_TEMP "hiddify-core-win"
+          New-Item -ItemType Directory -Path $workdir -Force | Out-Null
+          $archive = Join-Path $workdir "hiddify-lib-windows-amd64.tar.gz"
+          Invoke-WebRequest -Uri $url -OutFile $archive
+          tar -xzf $archive -C $workdir
+          New-Item -ItemType Directory -Path "hiddify-core/bin" -Force | Out-Null
+          foreach ($name in @("hiddify-core.dll", "libcronet.dll", "HiddifyCli.exe")) {
+            $src = Get-ChildItem -Path $workdir -Recurse -File -Filter $name | Select-Object -First 1
+            if (-not $src) {
+              throw "Required file not found in archive: $name ($url)"
+            }
+            Copy-Item $src.FullName -Destination (Join-Path "hiddify-core/bin" $name) -Force
+          }
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -226,12 +252,27 @@ jobs:
         with:
           lfs: false
 
-      - name: Pull required LFS assets
+      - name: Download required core assets
         shell: bash
         run: |
           set -euo pipefail
-          git lfs version
-          git lfs pull --include="hiddify-core/bin/lib/hiddify-core.so" --exclude=""
+          url="${{ env.HIDDIFY_CORE_RELEASE_BASE }}/${{ env.HIDDIFY_CORE_VERSION }}/hiddify-lib-linux-amd64.tar.gz"
+          workdir="$(mktemp -d)"
+          archive="$workdir/hiddify-lib-linux-amd64.tar.gz"
+          extract_dir="$workdir/extract"
+          mkdir -p "$extract_dir" hiddify-core/bin/lib
+          curl -fL --retry 5 --retry-delay 6 --retry-all-errors "$url" -o "$archive"
+          tar -xzf "$archive" -C "$extract_dir"
+          so_path="$(find "$extract_dir" -type f -name 'hiddify-core.so' | head -n 1 || true)"
+          cli_path="$(find "$extract_dir" -type f -name 'HiddifyCli' | head -n 1 || true)"
+          if [ -z "$so_path" ] || [ -z "$cli_path" ]; then
+            echo "::error::Required Linux core files not found in archive: $url"
+            find "$extract_dir" -maxdepth 4 -type f | sed 's#^#  #'
+            exit 1
+          fi
+          cp -f "$so_path" hiddify-core/bin/lib/hiddify-core.so
+          cp -f "$cli_path" hiddify-core/bin/HiddifyCli
+          chmod +x hiddify-core/bin/HiddifyCli
 
       - name: Install Linux dependencies
         shell: bash
@@ -328,12 +369,24 @@ jobs:
         with:
           lfs: false
 
-      - name: Pull required LFS assets
+      - name: Download required core assets
         shell: bash
         run: |
           set -euo pipefail
-          git lfs version
-          git lfs pull --include="hiddify-core/bin/hiddify-core.dylib" --exclude=""
+          url="${{ env.HIDDIFY_CORE_RELEASE_BASE }}/${{ env.HIDDIFY_CORE_VERSION }}/hiddify-lib-macos.tar.gz"
+          workdir="$(mktemp -d)"
+          archive="$workdir/hiddify-lib-macos.tar.gz"
+          extract_dir="$workdir/extract"
+          mkdir -p "$extract_dir" hiddify-core/bin
+          curl -fL --retry 5 --retry-delay 6 --retry-all-errors "$url" -o "$archive"
+          tar -xzf "$archive" -C "$extract_dir"
+          dylib_path="$(find "$extract_dir" -type f -name 'hiddify-core.dylib' | head -n 1 || true)"
+          if [ -z "$dylib_path" ]; then
+            echo "::error::hiddify-core.dylib not found in archive: $url"
+            find "$extract_dir" -maxdepth 4 -type f | sed 's#^#  #'
+            exit 1
+          fi
+          cp -f "$dylib_path" hiddify-core/bin/hiddify-core.dylib
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
