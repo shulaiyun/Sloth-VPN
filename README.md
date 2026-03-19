@@ -54,12 +54,21 @@
 - <img width="856" height="629" alt="image" src="https://github.com/user-attachments/assets/408f70e6-4d57-49f3-8d12-7b34581d8397" /><img width="852" height="854" alt="image" src="https://github.com/user-attachments/assets/8bf7b0de-33e5-4496-955d-d505da07e01e" />
 
 `：首页
-- `<img width="842" height="855" alt="image" src="https://github.com/user-attachments/assets/074a7298-4359-4872-a946-54d0aa64b85c" />
+- `<img width="582" height="1280" alt="image" src="https://github.com/user-attachments/assets/4c7d2557-4e3c-4b92-9406-0e2f50450ee0" />
+<img width="582" height="1280" alt="image" src="https://github.com/user-attachments/assets/9d596a84-b7f4-455e-a803-71f30bb17388" />
+<img width="582" height="1280" alt="image" src="https://github.com/user-attachments/assets/b36559ac-290f-484e-8b7e-e71d0ecf591a" />
+<img width="358" height="1280" alt="image" src="https://github.com/user-attachments/assets/655a72dc-3847-496e-9410-984544fa8c53" />
+<img width="520" height="1280" alt="image" src="https://github.com/user-attachments/assets/ff64b770-ac96-4a46-b9e8-9de99d8d7ef9" />
+<img width="261" height="1280" alt="image" src="https://github.com/user-attachments/assets/43618e3e-6154-4bb0-8eff-71f0e72bbb68" />
+
+
 
 `：节点页
-- `<img width="847" height="857" alt="image" src="https://github.com/user-attachments/assets/bac4183e-b1ef-4640-b681-1c161e911a55" />
+- `<img width="582" height="1280" alt="image" src="https://github.com/user-attachments/assets/51a04f8a-0118-49f5-a5c8-d2866dd8bad1" />
 
-`：设置页
+
+`：设置页<img width="582" height="1280" alt="image" src="https://github.com/user-attachments/assets/af65ccec-13a4-46c3-8a2a-4b2af0f19594" />
+
 - `docs/screenshots/windows-client.png`：Windows 客户端
 
 如需继续扩展，也可以在 `docs/screenshots/` 下按平台新增更多文件。
