@@ -45,7 +45,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
+
+      - name: Pull required LFS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs version
+          git lfs pull --include="android/app/libs/hiddify-core.aar" --exclude=""
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -104,7 +111,7 @@ jobs:
           name: android-artifacts
           path: out/*
           retention-days: ${{ inputs.artifact-retention-days }}
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Mark Android build failure
         if: ${{ steps.collect_android.outputs.has_apk != 'true' }}
@@ -121,7 +128,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
+
+      - name: Pull required LFS assets
+        shell: pwsh
+        run: |
+          git lfs version
+          git lfs pull --include="hiddify-core/bin/hiddify-core.dll" --exclude=""
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -166,6 +179,7 @@ jobs:
           fastforge package --platform windows --targets exe --skip-clean --build-target=${{ env.BUILD_TARGET }}
 
       - name: Collect Windows artifacts
+        id: collect_windows
         if: always()
         shell: pwsh
         run: |
@@ -183,6 +197,8 @@ jobs:
           if (Test-Path "build-logs\windows-build.log") {
             Copy-Item "build-logs\windows-build.log" -Destination "out\windows-build.log" -Force
           }
+          $hasFiles = (Get-ChildItem -Path out -File -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
+          "has_files=$($hasFiles.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Upload Windows artifacts
         if: always()
@@ -191,10 +207,10 @@ jobs:
           name: windows-artifacts
           path: out/*
           retention-days: ${{ inputs.artifact-retention-days }}
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Mark Windows build failure
-        if: ${{ steps.build_windows.outcome != 'success' }}
+        if: ${{ steps.build_windows.outcome != 'success' || steps.collect_windows.outputs.has_files != 'true' }}
         shell: pwsh
         run: exit 1
 
@@ -208,7 +224,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
+
+      - name: Pull required LFS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs version
+          git lfs pull --include="hiddify-core/bin/lib/hiddify-core.so" --exclude=""
 
       - name: Install Linux dependencies
         shell: bash
@@ -259,6 +282,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Collect Linux artifacts
+        id: collect_linux
         if: always()
         shell: bash
         run: |
@@ -270,6 +294,11 @@ jobs:
             rm -rf out/SlothVPN-linux-x64
           fi
           cp build-logs/*.log out/ 2>/dev/null || true
+          if compgen -G "out/*" > /dev/null; then
+            echo "has_files=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+          fi
           ls -la out
 
       - name: Upload Linux artifacts
@@ -279,10 +308,10 @@ jobs:
           name: linux-artifacts
           path: out/*
           retention-days: ${{ inputs.artifact-retention-days }}
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Mark Linux build failure
-        if: ${{ steps.build_linux.outcome != 'success' }}
+        if: ${{ steps.build_linux.outcome != 'success' || steps.collect_linux.outputs.has_files != 'true' }}
         shell: bash
         run: exit 1
 
@@ -297,7 +326,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
+
+      - name: Pull required LFS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs version
+          git lfs pull --include="hiddify-core/bin/hiddify-core.dylib" --exclude=""
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -329,6 +365,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Collect macOS artifacts
+        id: collect_macos
         if: always()
         shell: bash
         run: |
@@ -337,6 +374,11 @@ jobs:
             ditto -c -k --keepParent "build/macos/Build/Products/Release/SlothVPN.app" "out/SlothVPN-macos.zip"
           fi
           cp build-logs/*.log out/ 2>/dev/null || true
+          if compgen -G "out/*" > /dev/null; then
+            echo "has_files=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+          fi
           ls -la out
 
       - name: Upload macOS artifacts
@@ -346,9 +388,9 @@ jobs:
           name: macos-artifacts
           path: out/*
           retention-days: ${{ inputs.artifact-retention-days }}
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Mark macOS build failure
-        if: ${{ steps.build_macos.outcome != 'success' }}
+        if: ${{ steps.build_macos.outcome != 'success' || steps.collect_macos.outputs.has_files != 'true' }}
         shell: bash
         run: exit 1
