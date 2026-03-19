@@ -51,7 +51,7 @@
 
 建议后续将截图放在以下目录：
 
-- <img width="856" height="629" alt="image" src="https://github.com/user-attachments/assets/408f70e6-4d57-49f3-8d12-7b34581d8397" /><img width="852" height="854" alt="image" src="https://github.com/user-attachments/assets/8bf7b0de-33e5-4496-955d-d505da07e01e" />
+
 
 `：首页
 - `<img width="582" height="1280" alt="image" src="https://github.com/user-attachments/assets/4c7d2557-4e3c-4b92-9406-0e2f50450ee0" />
