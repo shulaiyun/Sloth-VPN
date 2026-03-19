@@ -8,6 +8,7 @@ import 'package:hiddify/features/connection/model/connection_status.dart';
 import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
 import 'package:hiddify/features/proxy/active/ip_widget.dart';
+import 'package:hiddify/features/proxy/model/proxy_display_name.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -17,11 +18,14 @@ class ActiveProxyFooter extends ConsumerWidget with InfraLogger {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
     final connectionState = ref.watch(
       connectionNotifierProvider.select((value) => value.valueOrNull ?? const Disconnected()),
     );
     final activeProxy = ref.watch(activeProxyNotifierProvider.select((value) => value.valueOrNull));
     final t = ref.watch(translationsProvider).requireValue;
+    final activeTag = localizeProxyDisplay(activeProxy?.tagDisplay ?? '', isZh: isZh);
+    final activeType = localizeProxyDisplay(activeProxy?.type ?? '', isZh: isZh);
 
     if (connectionState != const Connected() || activeProxy == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
@@ -71,7 +75,7 @@ class ActiveProxyFooter extends ConsumerWidget with InfraLogger {
                   Semantics(
                     label: t.pages.proxies.activeProxy,
                     child: Text(
-                      activeProxy.tagDisplay,
+                      activeTag,
                       style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -88,7 +92,7 @@ class ActiveProxyFooter extends ConsumerWidget with InfraLogger {
                       const SlothIcon(SlothIconType.server, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        activeProxy.type,
+                        activeType,
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -110,12 +114,4 @@ class ActiveProxyFooter extends ConsumerWidget with InfraLogger {
       ),
     );
   }
-}
-
-String getRealOutboundTag(OutboundInfo group) {
-  var tag = group.tagDisplay;
-  if (group.groupSelectedTagDisplay != "" && group.groupSelectedTagDisplay != tag) {
-    tag = "$tag -> ${group.groupSelectedTagDisplay}";
-  }
-  return tag;
 }

@@ -129,6 +129,23 @@ const extractOrderError = (error: AppError): {
 
 const containsAny = (text: string, patterns: string[]): boolean => patterns.some((item) => text.includes(item));
 
+const normalizeCouponCode = (value: string): string => value.trim().toLowerCase();
+
+const isConfiguredNewUserCoupon = (code: string): boolean => {
+  if (!config.newUserDiscountEnabled || !config.newUserDiscountCouponCode) return false;
+  return normalizeCouponCode(code) === normalizeCouponCode(config.newUserDiscountCouponCode);
+};
+
+const isWithinNewUserWindow = (createdAtRaw: unknown): boolean => {
+  const createdAtIso = toIsoTimeOrNull(createdAtRaw ?? null);
+  if (!createdAtIso) return false;
+  const created = Date.parse(createdAtIso);
+  if (!Number.isFinite(created)) return false;
+  const now = Date.now();
+  const windowMs = Math.max(1, config.newUserDiscountWindowDays) * 24 * 60 * 60 * 1000;
+  return now - created >= 0 && now - created <= windowMs;
+};
+
 const mapUpstreamOrderError = (error: unknown): never => {
   if (!(error instanceof AppError)) {
     throw error;
@@ -278,6 +295,17 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "优惠券不能为空");
     }
 
+    if (isConfiguredNewUserCoupon(code)) {
+      const user = await deps.xboard.getUserInfo(session.xboardAuthData);
+      if (!isWithinNewUserWindow(user.created_at)) {
+        throw new AppError(
+          400,
+          ErrorCodes.INVALID_ARGUMENT,
+          `该优惠券仅限注册 ${Math.max(1, config.newUserDiscountWindowDays)} 天内新用户使用`,
+        );
+      }
+    }
+
     const raw = await deps.xboard
       .checkCoupon({
         authData: session.xboardAuthData,
@@ -408,13 +436,61 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
       throw new AppError(400, ErrorCodes.INVALID_ARGUMENT, "plan_id and period are required");
     }
 
+    let couponCode = typeof body.coupon_code === "string" ? body.coupon_code.trim() : "";
+    let userInfo: Awaited<ReturnType<XboardAdapter["getUserInfo"]>> | null = null;
+
+    const loadUserInfo = async (): Promise<Awaited<ReturnType<XboardAdapter["getUserInfo"]>> | null> => {
+      if (userInfo) return userInfo;
+      try {
+        userInfo = await deps.xboard.getUserInfo(session.xboardAuthData);
+        return userInfo;
+      } catch {
+        return null;
+      }
+    };
+
+    const assertNewUserCouponAllowed = async (inputCouponCode: string): Promise<void> => {
+      if (!isConfiguredNewUserCoupon(inputCouponCode)) return;
+      const user = await loadUserInfo();
+      if (!user || !isWithinNewUserWindow(user.created_at)) {
+        throw new AppError(
+          400,
+          ErrorCodes.INVALID_ARGUMENT,
+          `该优惠券仅限注册 ${Math.max(1, config.newUserDiscountWindowDays)} 天内新用户使用`,
+        );
+      }
+    };
+
+    if (couponCode) {
+      await assertNewUserCouponAllowed(couponCode);
+    }
+
+    if (!couponCode && config.newUserDiscountEnabled && config.newUserDiscountCouponCode) {
+      try {
+        const user = await loadUserInfo();
+        if (!user) throw new Error("missing user info");
+        const createdAtRaw = user.created_at;
+        const createdAtIso = toIsoTimeOrNull(createdAtRaw ?? null);
+        if (createdAtIso) {
+          const created = Date.parse(createdAtIso);
+          const windowMs = Math.max(1, config.newUserDiscountWindowDays) * 24 * 60 * 60 * 1000;
+          const eligible = Number.isFinite(created) && Date.now() - created >= 0 && Date.now() - created <= windowMs;
+          if (eligible) {
+            couponCode = config.newUserDiscountCouponCode;
+          }
+        }
+      } catch {
+        // If user info lookup fails, continue without hidden coupon to avoid blocking orders.
+      }
+    }
+
     let orderNo = "";
     try {
       orderNo = await deps.xboard.createOrder({
         authData: session.xboardAuthData,
         planId,
         period,
-        couponCode: typeof body.coupon_code === "string" ? body.coupon_code : undefined,
+        couponCode: couponCode || undefined,
       });
     } catch (err) {
       try {

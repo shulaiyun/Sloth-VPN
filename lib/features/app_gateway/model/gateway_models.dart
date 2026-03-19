@@ -313,6 +313,7 @@ class GatewayAccountSummary {
   GatewayAccountSummary({
     required this.email,
     this.planName,
+    this.registeredAt,
     this.expiredAt,
     required this.trafficUsed,
     required this.trafficTotal,
@@ -322,16 +323,23 @@ class GatewayAccountSummary {
     this.nodeCount,
     this.pullUrl,
     this.telegramUrl,
+    this.telegramGroupUrl,
     this.githubUrl,
     this.ticketUrl,
     this.noticeUrl,
     this.telegramBound = false,
     this.telegramUsername,
     this.telegramBotUrl,
+    this.newUserDiscountEnabled = false,
+    this.newUserDiscountEligible = false,
+    this.newUserDiscountPercent = 0,
+    this.newUserDiscountWindowDays = 0,
+    this.newUserDiscountText,
   });
 
   final String email;
   final String? planName;
+  final String? registeredAt;
   final String? expiredAt;
   final int trafficUsed;
   final int trafficTotal;
@@ -341,12 +349,18 @@ class GatewayAccountSummary {
   final int? nodeCount;
   final String? pullUrl;
   final String? telegramUrl;
+  final String? telegramGroupUrl;
   final String? githubUrl;
   final String? ticketUrl;
   final String? noticeUrl;
   final bool telegramBound;
   final String? telegramUsername;
   final String? telegramBotUrl;
+  final bool newUserDiscountEnabled;
+  final bool newUserDiscountEligible;
+  final int newUserDiscountPercent;
+  final int newUserDiscountWindowDays;
+  final String? newUserDiscountText;
 
   int get trafficRemaining {
     final value = trafficTotal - trafficUsed;
@@ -359,10 +373,13 @@ class GatewayAccountSummary {
     final user = _asMap(map["user"]);
     final subscription = _asMap(map["subscription"]);
     final links = _asMap(map["links"]);
+    final promo = _asMap(map["promo"]);
+    final newUserDiscount = _asMap(promo["new_user_discount"]);
 
     return GatewayAccountSummary(
       email: user["email"]?.toString() ?? "",
       planName: _asNullableString(user["plan_name"]),
+      registeredAt: _asNullableString(user["registered_at"]),
       expiredAt: _asNullableString(user["expired_at"]),
       trafficUsed: _asInt(user["traffic_used"]),
       trafficTotal: _asInt(user["traffic_total"]),
@@ -372,12 +389,18 @@ class GatewayAccountSummary {
       nodeCount: subscription["node_count"] == null ? null : _asInt(subscription["node_count"]),
       pullUrl: _asNullableString(subscription["pull_url"]),
       telegramUrl: _asNullableString(links["telegram"]),
+      telegramGroupUrl: _asNullableString(links["telegram_group"]),
       githubUrl: _asNullableString(links["github"]),
       ticketUrl: _asNullableString(links["tickets"]),
       noticeUrl: _asNullableString(links["notices"]),
       telegramBound: user["telegram_bound"] == true,
       telegramUsername: _asNullableString(user["telegram_username"]),
       telegramBotUrl: _asNullableString(links["telegram_bot"]),
+      newUserDiscountEnabled: newUserDiscount["enabled"] == true,
+      newUserDiscountEligible: newUserDiscount["eligible"] == true,
+      newUserDiscountPercent: _asInt(newUserDiscount["percent"]),
+      newUserDiscountWindowDays: _asInt(newUserDiscount["window_days"]),
+      newUserDiscountText: _asNullableString(newUserDiscount["text"]),
     );
   }
 }

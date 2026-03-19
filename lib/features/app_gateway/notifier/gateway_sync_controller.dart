@@ -253,7 +253,7 @@ class SlothGatewaySyncController with AppLogger {
     final result = await repository
         .upsertRemote(
           pullUrl,
-          userOverride: const UserOverride(name: 'SlothVPN Managed Subscription', updateInterval: 6),
+          userOverride: const UserOverride(name: '树懒VPN', updateInterval: 6),
         )
         .run();
 

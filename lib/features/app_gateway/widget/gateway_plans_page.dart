@@ -65,6 +65,9 @@ class GatewayPlansPage extends HookConsumerWidget {
     final couponCheckedSignature = useState<String?>(null);
     final couponCheckedDiscount = useState<int>(0);
     final couponCheckedCode = useState<String?>(null);
+    final notices = useState<List<GatewayNoticeItem>>([]);
+    final noticesLoading = useState(false);
+    final usageExpanded = useState(false);
 
     useListenable(couponTextController);
     useListenable(giftCardTextController);
@@ -200,11 +203,13 @@ class GatewayPlansPage extends HookConsumerWidget {
           methods.value = const [];
           orders.value = const [];
           summary.value = null;
+          notices.value = const [];
           giftCardHistory.value = const [];
           promoUsageOrders.value = const [];
           couponCheckedSignature.value = null;
           couponCheckedDiscount.value = 0;
           couponCheckedCode.value = null;
+          usageExpanded.value = false;
           return;
         }
 
@@ -238,6 +243,15 @@ class GatewayPlansPage extends HookConsumerWidget {
           }
         }
         selectedPeriods.value = defaults;
+        noticesLoading.value = true;
+        try {
+          notices.value = await portal.fetchNotices(pageSize: 3);
+        } on GatewayApiException {
+          notices.value = const [];
+        } finally {
+          noticesLoading.value = false;
+        }
+        usageExpanded.value = false;
         await loadGiftCardHistory();
       } on GatewayApiException catch (error) {
         errorText.value = error.message;
@@ -584,43 +598,123 @@ class GatewayPlansPage extends HookConsumerWidget {
       final currentPlan = summary.value?.planName?.trim();
       final isRenew = currentPlan != null && currentPlan.isNotEmpty && currentPlan == plan.name.trim();
       final title = isRenew ? (isZh ? '续费确认' : 'Renew Confirmation') : (isZh ? '切换套餐确认' : 'Plan Change Confirmation');
-      final lines = <String>['1. ${g.renewRulesSamePlan}', '2. ${g.renewRulesUpgrade}', '3. ${g.renewRulesRefund}'];
       final selectedPeriod = plan.periods.firstWhere(
         (item) => item.code == period,
         orElse: () => GatewayPlanPeriod(code: period, label: period, price: 0),
       );
       final periodLabel = g.periodLabel(selectedPeriod.code, selectedPeriod.label);
-      final amountText = _presentPrice(selectedPeriod.price);
-      final content = StringBuffer()
-        ..writeln(
-          '${isZh ? '当前套餐' : 'Current plan'}: ${currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan}',
-        )
-        ..writeln('${isZh ? '目标套餐' : 'Target plan'}: ${plan.name}')
-        ..writeln('${isZh ? '购买周期' : 'Billing cycle'}: $periodLabel')
-        ..writeln('${isZh ? '订单金额' : 'Order amount'}: $amountText')
-        ..writeln()
-        ..writeln('Pre-order preview:')
-        ..writeln('Original: ${_presentPrice(preview.original)}')
-        ..writeln('Coupon: -${_presentPrice(preview.coupon)}')
-        ..writeln('Balance: -${_presentPrice(preview.balance)}')
-        ..writeln(
-          'Old plan offset: -${_presentPrice(preview.oldPlanOffset)}'
-          '${preview.oldPlanOffset == 0 ? ' (server calculated on order)' : ''}',
-        )
-        ..writeln('Final payable: ${_presentPrice(preview.finalPay)}')
-        ..writeln()
-        ..writeln(lines.join('\n'));
+      final originalText = _presentPrice(preview.original);
+      final couponText = '-${_presentPrice(preview.coupon)}';
+      final balanceText = '-${_presentPrice(preview.balance)}';
+      final offsetText = '-${_presentPrice(preview.oldPlanOffset)}';
+      final finalPayText = _presentPrice(preview.finalPay);
+      final totalDiscountText = '-${_presentPrice(preview.coupon + preview.balance + preview.oldPlanOffset)}';
 
       final result = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Text(content.toString()),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '取消' : 'Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '确认下单' : 'Confirm')),
-          ],
-        ),
+        builder: (context) {
+          final dialogTheme = Theme.of(context);
+
+          Widget kv(String label, String value, {bool strong = false, Color? valueColor}) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: dialogTheme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: strong ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    value,
+                    style: dialogTheme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: valueColor ?? dialogTheme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(isZh ? '套餐信息' : 'Plan info', style: dialogTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    kv(isZh ? '当前套餐' : 'Current plan', currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan),
+                    kv(isZh ? '目标套餐' : 'Target plan', plan.name),
+                    kv(isZh ? '购买周期' : 'Billing cycle', periodLabel),
+                    kv(isZh ? '套餐原价' : 'Original amount', originalText),
+                    const SizedBox(height: 8),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+                    Text(isZh ? '下单前金额预览' : 'Pre-order preview', style: dialogTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: dialogTheme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
+                        border: Border.all(color: dialogTheme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                      ),
+                      child: Column(
+                        children: [
+                          kv(isZh ? '原价' : 'Original', originalText),
+                          kv(isZh ? '总抵扣' : 'Total discount', totalDiscountText, strong: true, valueColor: SlothPalette.success),
+                          kv(isZh ? '最终实付' : 'Final payable', finalPayText, strong: true, valueColor: dialogTheme.colorScheme.primary),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: dialogTheme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+                        border: Border.all(color: dialogTheme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          kv(isZh ? '优惠券抵扣' : 'Coupon discount', couponText, valueColor: SlothPalette.success),
+                          kv(isZh ? '余额抵扣' : 'Balance deduction', balanceText, valueColor: SlothPalette.success),
+                          kv(isZh ? '旧套餐折算抵扣' : 'Old plan offset', offsetText, valueColor: SlothPalette.success),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      isZh ? '旧套餐折算金额由服务端在最终下单时计算。' : 'Old-plan offset is finalized by server on order creation.',
+                      style: dialogTheme.textTheme.bodySmall?.copyWith(color: dialogTheme.colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 10),
+                    Text('1. ${g.renewRulesSamePlan}'),
+                    const SizedBox(height: 4),
+                    Text('2. ${g.renewRulesUpgrade}'),
+                    const SizedBox(height: 4),
+                    Text('3. ${g.renewRulesRefund}'),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(isZh ? '取消' : 'Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(isZh ? '确认下单' : 'Confirm')),
+            ],
+          );
+        },
       );
       return result == true;
     }
@@ -789,6 +883,133 @@ class GatewayPlansPage extends HookConsumerWidget {
       }
     }
 
+    Future<void> openNoticeDetail(GatewayNoticeItem item) async {
+      if (!context.mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (context) {
+          final contentTheme = Theme.of(context);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                Text(item.title, style: contentTheme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                if ((item.updatedAt ?? item.createdAt)?.isNotEmpty ?? false)
+                  Text(
+                    _presentDateTime(item.updatedAt ?? item.createdAt),
+                    style: contentTheme.textTheme.bodySmall?.copyWith(color: contentTheme.colorScheme.onSurfaceVariant),
+                  ),
+                const SizedBox(height: 12),
+                SelectableText(item.content.isEmpty ? '--' : item.content),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    Widget noticeCard() {
+      final entries = notices.value;
+      return Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.campaign_rounded, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => context.push('/gateway-account/notices'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          isZh ? '最新公告' : 'Latest notices',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/gateway-account/notices'),
+                    child: Text(isZh ? '查看更多' : 'View all'),
+                  ),
+                ],
+              ),
+              if (noticesLoading.value) ...[
+                const SizedBox(height: 6),
+                const LinearProgressIndicator(minHeight: 2),
+              ],
+              if (entries.isEmpty) ...[
+                const SizedBox(height: 8),
+                InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => context.push('/gateway-account/notices'),
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.26),
+                      border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    child: Text(
+                      isZh ? '暂无公告，点击进入公告中心查看' : 'No notices yet. Tap to open notice center.',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+              ...entries.map(
+                (item) => InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => openNoticeDetail(item),
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.26),
+                      border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 4),
+                              Text(
+                                _presentDateTime(item.updatedAt ?? item.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right_rounded, color: theme.colorScheme.primary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     Widget rulesCard() {
       final summaryValue = summary.value;
       return Card(
@@ -839,8 +1060,32 @@ class GatewayPlansPage extends HookConsumerWidget {
     Widget promoCard() {
       final couponUsageOrders = promoUsageOrders.value
           .where((item) => item.hasPromoDiscount || item.hasGiftOrBalanceDeduction)
-          .take(6)
           .toList();
+      final usageEntries = <({String title, String detail, String timestamp})>[
+        ...couponUsageOrders.map(
+          (item) => (
+            title: '${isZh ? '订单' : 'Order'} ${item.orderNo}',
+            detail:
+                '${_presentDateTime(item.createdAt)} · ${isZh ? '优惠券抵扣' : 'Coupon'} -${_presentPrice(item.discountAmount)} · ${isZh ? '余额抵扣' : 'Balance'} -${_presentPrice(item.balanceAmount)}',
+            timestamp: item.createdAt ?? '',
+          ),
+        ),
+        ...giftCardHistory.value.map(
+          (item) => (
+            title: '${isZh ? '礼品卡' : 'Gift card'} ${item.code ?? '--'}',
+            detail:
+                '${_presentDateTime(item.usedAt ?? item.createdAt)} · ${isZh ? '状态' : 'Status'} ${item.status ?? '--'} · ${isZh ? '金额' : 'Amount'} ${_presentPrice(item.amount)}',
+            timestamp: item.usedAt ?? item.createdAt ?? '',
+          ),
+        ),
+      ];
+      usageEntries.sort((a, b) {
+        final ad = DateTime.tryParse(a.timestamp) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bd = DateTime.tryParse(b.timestamp) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bd.compareTo(ad);
+      });
+      final canExpandUsage = usageEntries.length > 3;
+      final visibleEntries = usageExpanded.value ? usageEntries : usageEntries.take(3).toList();
       return Card(
         margin: const EdgeInsets.only(bottom: 12),
         child: Padding(
@@ -853,7 +1098,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                   Icon(Icons.redeem_rounded, size: 18, color: theme.colorScheme.primary),
                   const SizedBox(width: 6),
                   Text(
-                    isZh ? '优惠券 / 礼品卡' : 'Coupon / Gift Card',
+                    isZh ? '优惠券 / 礼品卡' : 'Coupon / gift card',
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ],
@@ -863,7 +1108,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                 controller: couponTextController,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  labelText: isZh ? '优惠券代码（下单前自动校验）' : 'Coupon Code (validated before placing order)',
+                  labelText: isZh ? '优惠券代码（下单前自动校验）' : 'Coupon code (checked before order)',
                   prefixIcon: const Icon(Icons.local_offer_outlined),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.clear_rounded),
@@ -899,7 +1144,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                 controller: giftCardTextController,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  labelText: isZh ? '礼品卡 / 兑换码' : 'Gift Card Code',
+                  labelText: isZh ? '礼品卡 / 兑换码' : 'Gift card code',
                   prefixIcon: const Icon(Icons.card_giftcard_rounded),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.clear_rounded),
@@ -916,18 +1161,18 @@ class GatewayPlansPage extends HookConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: promoBusy.value ? null : previewGiftCard,
-                      icon: const Icon(Icons.verified_outlined),
-                      label: Text(isZh ? '校验礼品卡' : 'Check Gift Card'),
+                      child: OutlinedButton.icon(
+                        onPressed: promoBusy.value ? null : previewGiftCard,
+                        icon: const Icon(Icons.verified_outlined),
+                        label: Text(isZh ? '校验礼品卡' : 'Check gift card'),
+                      ),
                     ),
-                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _GatewayPrimaryActionButton(
                       onPressed: promoBusy.value ? null : redeemGiftCard,
                       icon: const Icon(Icons.redeem_rounded, size: 18),
-                      label: promoBusy.value ? g.processing : (isZh ? '立即兑换' : 'Redeem Now'),
+                      label: promoBusy.value ? g.processing : (isZh ? '立即兑换' : 'Redeem now'),
                     ),
                   ),
                 ],
@@ -943,25 +1188,6 @@ class GatewayPlansPage extends HookConsumerWidget {
                 ),
               ],
               if (giftHistoryLoading.value) ...[const SizedBox(height: 8), const LinearProgressIndicator(minHeight: 2)],
-              if (giftCardHistory.value.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  isZh ? '最近礼品卡记录' : 'Recent Gift Card Records',
-                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                ...giftCardHistory.value
-                    .take(3)
-                    .map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${item.code ?? '--'} · ${item.status ?? '--'} · ${_presentPrice(item.amount)}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                    ),
-              ],
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -979,32 +1205,55 @@ class GatewayPlansPage extends HookConsumerWidget {
                         Icon(Icons.history_rounded, size: 18, color: theme.colorScheme.primary),
                         const SizedBox(width: 6),
                         Text(
-                          'Coupon / Gift Card Usage',
+                          isZh ? '优惠券 / 礼品卡使用记录' : 'Coupon / gift card usage',
                           style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
                         ),
+                        const Spacer(),
+                        if (canExpandUsage)
+                          TextButton.icon(
+                            onPressed: () => usageExpanded.value = !usageExpanded.value,
+                            icon: Icon(
+                              usageExpanded.value ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              usageExpanded.value
+                                  ? (isZh ? '收起记录' : 'Collapse')
+                                  : (isZh ? '展开全部 ${usageEntries.length} 条' : 'Expand ${usageEntries.length}'),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (couponUsageOrders.isEmpty && giftCardHistory.value.isEmpty)
-                      Text('No coupon or gift card usage yet', style: theme.textTheme.bodySmall),
-                    ...couponUsageOrders.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${_presentDateTime(item.createdAt)} | ${item.orderNo} | '
-                          'Coupon -${_presentPrice(item.discountAmount)} | '
-                          'Balance -${_presentPrice(item.balanceAmount)}',
-                          style: theme.textTheme.bodySmall,
-                        ),
+                    if (usageEntries.isEmpty)
+                      Text(
+                        isZh ? '暂无优惠券或礼品卡使用记录' : 'No coupon or gift card usage yet',
+                        style: theme.textTheme.bodySmall,
                       ),
-                    ),
-                    ...giftCardHistory.value.take(3).map(
+                    ...visibleEntries.map(
                       (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${_presentDateTime(item.usedAt ?? item.createdAt)} | ${item.code ?? '--'} | '
-                          '${item.status ?? '--'} | ${_presentPrice(item.amount)}',
-                          style: theme.textTheme.bodySmall,
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.45),
+                            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.detail,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1021,6 +1270,7 @@ class GatewayPlansPage extends HookConsumerWidget {
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          noticeCard(),
           rulesCard(),
           promoCard(),
           if (methods.value.isNotEmpty) ...[
@@ -1138,7 +1388,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                               ? null
                               : () => resolveCouponCodeForBuy(planId: plan.id, period: selectedPeriod.code),
                           icon: const Icon(Icons.discount_outlined, size: 18),
-                          label: const Text('Validate Coupon'),
+                          label: Text(isZh ? '校验优惠券' : 'Validate coupon'),
                         ),
                       ),
                     Container(
@@ -1154,24 +1404,77 @@ class GatewayPlansPage extends HookConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pre-order Amount Preview',
-                            style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                            isZh ? '下单前金额预览' : 'Pre-order amount preview',
+                            style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 6),
-                          Text('Original: ${_presentPrice(preview.original)}'),
-                          Text('Coupon: -${_presentPrice(preview.coupon)}'),
-                          Text('Balance: -${_presentPrice(preview.balance)}'),
-                          Text('Old plan offset: -${_presentPrice(preview.oldPlanOffset)}'),
-                          Text(
-                            'Old-plan offset is calculated by server at final order creation.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
+                              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                            ),
+                            child: Column(
+                              children: [
+                                _PreviewLine(
+                                  label: isZh ? '原价' : 'Original',
+                                  value: _presentPrice(preview.original),
+                                ),
+                                const SizedBox(height: 6),
+                                _PreviewLine(
+                                  label: isZh ? '总抵扣' : 'Total discount',
+                                  value: '-${_presentPrice(preview.coupon + preview.balance + preview.oldPlanOffset)}',
+                                  valueColor: SlothPalette.success,
+                                ),
+                                const SizedBox(height: 6),
+                                _PreviewLine(
+                                  label: isZh ? '最终实付' : 'Final payable',
+                                  value: _presentPrice(preview.finalPay),
+                                  valueColor: theme.colorScheme.primary,
+                                  emphasized: true,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Final payable: ${_presentPrice(preview.finalPay)}',
-                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
+                              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${isZh ? '优惠抵扣' : 'Coupon'}: -${_presentPrice(preview.coupon)}',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${isZh ? '余额抵扣' : 'Balance'}: -${_presentPrice(preview.balance)}',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${isZh ? '旧套餐折算抵扣' : 'Old plan offset'}: -${_presentPrice(preview.oldPlanOffset)}',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isZh
+                                      ? '旧套餐折算抵扣以下单时服务端最终计算为准。'
+                                      : 'Old-plan offset is finalized by server when creating order.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -1592,6 +1895,50 @@ class _OrderFilterChip extends StatelessWidget {
         color: selected ? theme.colorScheme.primary.withValues(alpha: 0.44) : theme.colorScheme.outlineVariant,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+}
+
+class _PreviewLine extends StatelessWidget {
+  const _PreviewLine({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.emphasized = false,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: emphasized ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: valueColor ?? theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

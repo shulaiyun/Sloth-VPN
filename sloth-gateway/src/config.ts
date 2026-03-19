@@ -44,6 +44,7 @@ export const config = {
   xboardTimeoutMs: num(process.env.XBOARD_TIMEOUT_MS, 15000),
   xboardTrafficUnit: (process.env.XBOARD_TRAFFIC_UNIT ?? "auto").trim().toLowerCase(),
   defaultTelegramUrl: process.env.DEFAULT_TELEGRAM_URL ?? "https://t.me/shulai2026",
+  telegramGroupUrl: process.env.TELEGRAM_GROUP_URL ?? "https://t.me/+DWcAXq0TIO41OThl",
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME ?? "shulaiyun_bot",
   telegramBotUrl: process.env.TELEGRAM_BOT_URL ?? "https://t.me/shulaiyun_bot",
   defaultGithubUrl: process.env.DEFAULT_GITHUB_URL ?? "https://github.com/shulaiyun/Sloth-VPN",
@@ -60,6 +61,12 @@ export const config = {
     process.env.INVITE_SIGNUP_REWARD_SUCCESS_TEXT ?? "邀请注册奖励已到账：赠送 3 天时长与 10GB 流量（以站点实际礼品卡配置为准）",
   inviteSignupRewardFallbackText:
     process.env.INVITE_SIGNUP_REWARD_FALLBACK_TEXT ?? "邀请码注册成功，奖励发放中，请稍后在账户中心刷新查看",
+  newUserDiscountEnabled: (process.env.NEW_USER_DISCOUNT_ENABLED ?? "false").toLowerCase() === "true",
+  newUserDiscountPercent: num(process.env.NEW_USER_DISCOUNT_PERCENT, 20),
+  newUserDiscountWindowDays: num(process.env.NEW_USER_DISCOUNT_WINDOW_DAYS, 7),
+  newUserDiscountCouponCode: (process.env.NEW_USER_DISCOUNT_COUPON_CODE ?? "").trim(),
+  newUserDiscountText:
+    process.env.NEW_USER_DISCOUNT_TEXT ?? "新用户注册 7 天内购买套餐可享 20% 优惠",
   allowedEmailSuffixes: csv(process.env.AUTH_ALLOWED_EMAIL_SUFFIXES),
   debugBindCode: (process.env.DEBUG_BIND_CODE ?? "false").toLowerCase() === "true",
 };

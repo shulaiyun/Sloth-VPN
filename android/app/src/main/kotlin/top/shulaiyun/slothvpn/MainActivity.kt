@@ -20,6 +20,7 @@ import top.shulaiyun.slothvpn.constant.Status
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.LinkedList
@@ -40,6 +41,8 @@ class MainActivity : FlutterFragmentActivity(), ServiceConnection.Callback {
     var logCallback: ((Boolean) -> Unit)? = null
     val serviceStatus = MutableLiveData(Status.Stopped)
     val serviceAlerts = MutableLiveData<ServiceEvent?>(null)
+    @Volatile
+    private var waitingVpnAuthorization = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -60,6 +63,10 @@ class MainActivity : FlutterFragmentActivity(), ServiceConnection.Callback {
 
     @SuppressLint("NewApi")
     fun startService() {
+        if (waitingVpnAuthorization) {
+            Log.d(TAG, "vpn authorization already pending, ignoring duplicate start request")
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !ServiceNotification.checkPermission()) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
@@ -89,12 +96,15 @@ class MainActivity : FlutterFragmentActivity(), ServiceConnection.Callback {
         try {
             val intent = VpnService.prepare(this@MainActivity)
             if (intent != null) {
+                waitingVpnAuthorization = true
                 prepareLauncher.launch(intent)
                 true
             } else {
+                waitingVpnAuthorization = false
                 false
             }
         } catch (e: Exception) {
+            waitingVpnAuthorization = false
             onServiceAlert(Alert.RequestVPNPermission, e.message)
             true
         }
@@ -115,8 +125,15 @@ class MainActivity : FlutterFragmentActivity(), ServiceConnection.Callback {
             ActivityResultContracts.StartActivityForResult(),
         ) { result ->
             if (result.resultCode == RESULT_OK) {
-                startService0()
+                lifecycleScope.launch {
+                    waitingVpnAuthorization = false
+                    // Android may report permission granted slightly before VpnService.prepare()
+                    // becomes stable. A short delay removes the first-tap false negative.
+                    delay(450)
+                    startService0()
+                }
             } else {
+                waitingVpnAuthorization = false
                 onServiceAlert(Alert.RequestVPNPermission, null)
             }
         }

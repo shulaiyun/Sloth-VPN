@@ -1,4 +1,4 @@
-import 'package:dartx/dartx.dart';
+﻿import 'package:dartx/dartx.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +22,7 @@ import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_delay_indicator.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
 import 'package:hiddify/features/proxy/active/ip_widget.dart';
+import 'package:hiddify/features/proxy/model/proxy_display_name.dart';
 import 'package:hiddify/gen/assets.gen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -207,11 +208,12 @@ class _ConnectionHeaderCard extends StatelessWidget {
   final String activeNode;
   final String? activeCountryCode;
 
-  String _cleanNodeLabel(String value) {
+  String _cleanNodeLabel(String value, {required bool isZh}) {
     final withoutRegionalFlags = value.replaceAll(RegExp(r'[\u{1F1E6}-\u{1F1FF}]{2}', unicode: true), '');
     final withoutLeadingSymbols = withoutRegionalFlags.replaceAll(RegExp(r'^\s*[^\w\u4e00-\u9fa5]+\s*'), '');
     final normalized = withoutLeadingSymbols.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return normalized.isEmpty ? value : normalized;
+    final cleaned = normalized.isEmpty ? value : normalized;
+    return localizeProxyDisplay(cleaned, isZh: isZh);
   }
 
   @override
@@ -276,7 +278,7 @@ class _ConnectionHeaderCard extends StatelessWidget {
                 child: _StatMini(
                   icon: SlothIconType.server,
                   label: isZh ? "节点" : "Node",
-                  value: _cleanNodeLabel(activeNode),
+                  value: _cleanNodeLabel(activeNode, isZh: isZh),
                   leading: activeCountryCode == null || activeCountryCode!.trim().isEmpty
                       ? null
                       : IPCountryFlag(countryCode: activeCountryCode),
@@ -829,3 +831,5 @@ class _TrafficMiniStatusTile extends StatelessWidget {
     );
   }
 }
+
+

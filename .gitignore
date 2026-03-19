@@ -13,6 +13,9 @@ Thumbs.db
 
 # Dart / Flutter
 .dart_tool/
+.tooling/
+.gradle-home-build/
+.tmp/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages

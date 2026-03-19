@@ -1,4 +1,4 @@
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+﻿import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -38,6 +38,8 @@ class ProfileTile extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider).requireValue;
     final theme = Theme.of(context);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
+    final profileDisplayName = _profileDisplayName(profile.name, isZh: isZh);
 
     final selectActiveMutation = useMutation(
       initialOnFailure: (err) {
@@ -130,13 +132,13 @@ class ProfileTile extends HookConsumerWidget {
                                 const Gap(6),
                                 Expanded(
                                   child: Text(
-                                    profile.name,
+                                    profileDisplayName,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.titleMedium?.copyWith(
                                       fontFamily: PlatformUtils.isWindows ? FontFamily.emoji : null,
                                     ),
-                                    semanticsLabel: t.pages.profiles.activeProfileName(name: profile.name),
+                                    semanticsLabel: t.pages.profiles.activeProfileName(name: profileDisplayName),
                                   ),
                                 ),
                                 const Gap(8),
@@ -164,15 +166,15 @@ class ProfileTile extends HookConsumerWidget {
                                 ],
                                 Expanded(
                                   child: Text(
-                                    profile.name,
+                                    profileDisplayName,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.titleMedium?.copyWith(
                                       fontFamily: PlatformUtils.isWindows ? FontFamily.emoji : null,
                                     ),
                                     semanticsLabel: profile.active
-                                        ? t.pages.profiles.activeProfileName(name: profile.name)
-                                        : t.pages.profiles.nonActiveProfileName(name: profile.name),
+                                        ? t.pages.profiles.activeProfileName(name: profileDisplayName)
+                                        : t.pages.profiles.nonActiveProfileName(name: profileDisplayName),
                                   ),
                                 ),
                                 if (profile.active) ...[
@@ -203,6 +205,15 @@ class ProfileTile extends HookConsumerWidget {
       ),
     );
   }
+}
+
+String _profileDisplayName(String raw, {required bool isZh}) {
+  if (!isZh) return raw;
+  final lower = raw.toLowerCase();
+  if (lower.contains('slothvpn managed subscription') || lower.contains('slothvpn managed')) {
+    return '树懒VPN';
+  }
+  return raw;
 }
 
 class ProfileActionButton extends HookConsumerWidget {

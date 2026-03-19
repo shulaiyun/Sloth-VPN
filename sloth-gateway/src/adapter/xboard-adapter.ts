@@ -12,6 +12,7 @@ type XboardUserInfo = {
   email: string;
   transfer_enable: number;
   expired_at?: number;
+  created_at?: number | string;
   balance?: number;
   uuid?: string;
   plan_id?: number;
@@ -249,7 +250,44 @@ export class XboardAdapter {
   }
 
   async getUserInfo(authData: string): Promise<XboardUserInfo> {
-    return this.request<XboardUserInfo>("GET", "/api/v1/user/info", undefined, authData);
+    const raw = this.toRecord(await this.request<unknown>("GET", "/api/v1/user/info", undefined, authData));
+    const createdAt = this.pick(raw, [
+      "created_at",
+      "createdAt",
+      "register_at",
+      "registerAt",
+      "register_time",
+      "registerTime",
+      "registered_at",
+      "registeredAt",
+      "created_time",
+      "create_time",
+      "reg_time",
+      "regTime",
+    ]);
+    const expiredAt = this.pick(raw, ["expired_at", "expiredAt", "expire_at", "expireAt"]);
+    const uuid = this.pick(raw, ["uuid", "user_uuid", "userId"]);
+    const planId = this.pick(raw, ["plan_id", "planId"]);
+    const transferEnable = this.pick(raw, ["transfer_enable", "transferEnable", "traffic_total", "transfer"]);
+    const balance = this.pick(raw, ["balance", "balance_amount", "money"]);
+    const telegramId = this.pick(raw, ["telegram_id", "telegramId"]);
+    const telegramUsername = this.pick(raw, ["telegram_username", "telegramUsername"]);
+    const email = this.toStringOrNull(this.pick(raw, ["email", "mail"])) ?? "";
+
+    const normalized: XboardUserInfo = {
+      ...(raw as XboardUserInfo),
+      email,
+      transfer_enable: this.toNumber(transferEnable),
+      expired_at: expiredAt as number | undefined,
+      created_at: createdAt as number | string | undefined,
+      balance: this.toNumber(balance),
+      uuid: this.toStringOrNull(uuid) ?? undefined,
+      plan_id: this.toNumber(planId) || undefined,
+      telegram_id: telegramId as string | number | undefined,
+      telegram_username: this.toStringOrNull(telegramUsername) ?? undefined,
+    };
+
+    return normalized;
   }
 
   async getSubscribe(authData: string): Promise<XboardSubscribe> {

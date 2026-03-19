@@ -10,35 +10,35 @@ String? _normalizeUnexpectedConnectivityMessage(Object? error) {
   final raw = error.toString();
   final text = raw.toLowerCase();
 
-  if (text.contains("tun permission denied") ||
-      text.contains("vpn permission denied") ||
-      (text.contains("permission denied") && text.contains("tun"))) {
-    return "需要系统授权才能连接。请先在系统弹窗中点击允许；若未弹窗，请到 设置 > VPN > 树懒VPN 开启后重试。";
+  if (text.contains('tun permission denied') ||
+      text.contains('vpn permission denied') ||
+      (text.contains('permission denied') && text.contains('tun'))) {
+    return '需要系统授权才能连接。请先在系统弹窗中点击允许；若未弹窗，请到 设置 > VPN > 树懒VPN 开启后重试。';
   }
 
-  if (text.contains("failed to start background core") ||
-      text.contains("background core is not started yet") ||
-      text.contains("createservice - null") ||
-      text.contains("createservice")) {
-    return "后台服务启动失败，请重试；如仍失败请重启应用";
+  if (text.contains('failed to start background core') ||
+      text.contains('background core is not started yet') ||
+      text.contains('createservice - null') ||
+      text.contains('createservice')) {
+    return '后台服务启动失败，请重试；如仍失败，请重启应用。';
   }
 
-  if (text.contains("profile not found") ||
-      text.contains("empty outbound") ||
-      text.contains("no profile") ||
-      text.contains("subscription content is empty")) {
-    return "当前节点为空，请先同步订阅或购买套餐";
+  if (text.contains('profile not found') ||
+      text.contains('empty outbound') ||
+      text.contains('no profile') ||
+      text.contains('subscription content is empty')) {
+    return '当前节点为空，请先同步订阅或购买套餐。';
   }
 
-  if (text.contains("failed to connect")) {
-    return "连接节点失败，请切换节点后重试";
+  if (text.contains('failed to connect')) {
+    return '连接节点失败，请切换节点后重试。';
   }
 
-  if (text.contains("unexpected failure") || text.contains("unexpected")) {
-    return "连接失败，请稍后重试";
+  if (text.contains('unexpected failure') || text.contains('unexpected')) {
+    return '连接失败，请稍后重试。';
   }
 
-  return "连接失败，请检查网络与节点状态后重试";
+  return '连接失败，请检查网络与节点状态后重试。';
 }
 
 @freezed

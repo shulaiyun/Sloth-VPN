@@ -3,6 +3,7 @@ import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
 import 'package:hiddify/core/theme/sloth_design_tokens.dart';
 import 'package:hiddify/core/widget/sloth_icon.dart';
 import 'package:hiddify/features/proxy/active/ip_widget.dart';
+import 'package:hiddify/features/proxy/model/proxy_display_name.dart';
 import 'package:hiddify/gen/fonts.gen.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:hiddify/utils/platform_utils.dart';
@@ -17,12 +18,16 @@ class ProxyTile extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
     final theme = Theme.of(context);
     final delay = proxy.urlTestDelay;
     final hasDelay = delay > 0;
     final timeout = delay > 65000;
-    final delayText = timeout ? "timeout" : "${delay} ms";
+    final delayText = timeout ? (isZh ? "\u8d85\u65f6" : "timeout") : "$delay ms";
     final delayColor = _delayColor(theme, delay);
+    final tagDisplay = localizeProxyDisplay(proxy.tagDisplay, isZh: isZh);
+    final typeDisplay = localizeProxyDisplay(proxy.type, isZh: isZh);
+    final groupSelected = localizeProxyDisplay(proxy.groupSelectedTagDisplay.trim(), isZh: isZh);
 
     return Material(
       color: selected ? theme.colorScheme.primary.withValues(alpha: 0.12) : theme.colorScheme.surfaceContainerLow,
@@ -57,7 +62,7 @@ class ProxyTile extends HookConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      proxy.tagDisplay,
+                      tagDisplay,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: theme.textTheme.titleSmall?.copyWith(
@@ -72,7 +77,7 @@ class ProxyTile extends HookConsumerWidget {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            proxy.isGroup ? "${proxy.type} · ${proxy.groupSelectedTagDisplay.trim()}" : proxy.type,
+                            proxy.isGroup ? "$typeDisplay · $groupSelected" : typeDisplay,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),

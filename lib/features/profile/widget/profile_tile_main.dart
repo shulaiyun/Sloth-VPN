@@ -45,6 +45,8 @@ class ProfileTileMain extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider).requireValue;
     final theme = Theme.of(context);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
+    final profileDisplayName = _profileDisplayName(profile.name, isZh: isZh);
 
     final subInfo = switch (profile) {
       RemoteProfileEntity(:final subInfo) => subInfo,
@@ -78,7 +80,7 @@ class ProfileTileMain extends HookConsumerWidget {
                   ),
                   const Gap(6),
                   Text(
-                    profile.name,
+                    profileDisplayName,
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -160,6 +162,15 @@ class ProfileTileMain extends HookConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _profileDisplayName(String raw, {required bool isZh}) {
+    if (!isZh) return raw;
+    final lower = raw.toLowerCase();
+    if (lower.contains('slothvpn managed subscription') || lower.contains('slothvpn managed')) {
+      return '树懒VPN';
+    }
+    return raw;
   }
 
   IconData _getLinkIcon(String url, [IconData? icon]) {

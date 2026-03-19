@@ -21,6 +21,15 @@ const buildAccountSummary = async (
   session: ReturnType<SessionStore["get"]>,
 ) => {
   const user = await deps.xboard.getUserInfo(xboardAuthData);
+  const registeredAt = toIsoTimeOrNull(user.created_at ?? null);
+  const newUserDiscountEligible = (() => {
+    if (!config.newUserDiscountEnabled || !registeredAt) return false;
+    const created = Date.parse(registeredAt);
+    if (!Number.isFinite(created)) return false;
+    const elapsed = Date.now() - created;
+    const windowMs = Math.max(1, config.newUserDiscountWindowDays) * 24 * 60 * 60 * 1000;
+    return elapsed >= 0 && elapsed <= windowMs;
+  })();
   let subscribe: Awaited<ReturnType<XboardAdapter["getSubscribe"]>> | null = null;
   try {
     subscribe = await deps.xboard.getSubscribe(xboardAuthData);
@@ -60,6 +69,7 @@ const buildAccountSummary = async (
       id: subscribe?.uuid ?? String(user.uuid ?? ""),
       email: user.email,
       plan_name: resolvedPlanName,
+      registered_at: registeredAt,
       expired_at: toIsoTimeOrNull(subscribe?.expired_at ?? user.expired_at ?? null),
       traffic_used: trafficSummary.usedBytes,
       traffic_total: trafficSummary.totalBytes,
@@ -79,10 +89,20 @@ const buildAccountSummary = async (
     },
     links: {
       telegram: config.defaultTelegramUrl,
+      telegram_group: config.telegramGroupUrl,
       telegram_bot: config.telegramBotUrl,
       github: config.defaultGithubUrl,
       tickets: ticketUrl,
       notices: noticeUrl,
+    },
+    promo: {
+      new_user_discount: {
+        enabled: config.newUserDiscountEnabled,
+        eligible: newUserDiscountEligible,
+        percent: config.newUserDiscountPercent,
+        window_days: config.newUserDiscountWindowDays,
+        text: config.newUserDiscountText,
+      },
     },
   };
 };

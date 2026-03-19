@@ -48,7 +48,7 @@ class GatewayAccountPage extends HookConsumerWidget {
 
   bool _looksMojibake(String? value) {
     if (value == null || value.trim().isEmpty) return false;
-    return RegExp('[杩锛缁€镐]').hasMatch(value);
+    return value.contains('鏉') || value.contains('缂') || value.contains('闀') || value.contains('怾');
   }
 
   @override
@@ -165,6 +165,11 @@ class GatewayAccountPage extends HookConsumerWidget {
       await UriUtils.tryLaunch(Uri.parse(url));
     }
 
+    Future<void> openTelegramGroup() async {
+      final url = summary.value?.telegramGroupUrl ?? 'https://t.me/+DWcAXq0TIO41OThl';
+      await UriUtils.tryLaunch(Uri.parse(url));
+    }
+
     Future<void> requestWithdraw() async {
       final invite = inviteSummary.value;
       if (invite == null || !invite.supported) {
@@ -236,6 +241,7 @@ class GatewayAccountPage extends HookConsumerWidget {
     Widget accountTab(GatewayAccountSummary s) {
       final invite = inviteSummary.value;
       final tg = telegramBinding.value;
+      final telegramTitle = isZh ? 'Telegram机器人' : 'Telegram Bot';
       final usageRate = s.trafficTotal <= 0 ? 0.0 : (s.trafficUsed / s.trafficTotal).clamp(0.0, 1.0);
 
       return ListView(
@@ -362,7 +368,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                     children: [
                       Icon(Icons.telegram_rounded, color: theme.colorScheme.primary),
                       const SizedBox(width: 6),
-                      Text(g.telegram, style: theme.textTheme.titleMedium),
+                      Text(telegramTitle, style: theme.textTheme.titleMedium),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -598,7 +604,7 @@ class GatewayAccountPage extends HookConsumerWidget {
                         children: [
                           Text(
                             isZh
-                                ? '返利规则：总佣金比例 ${_formatPercent(invite.commissionRate)}，三级分销比例 L1 ${_formatPercent(invite.commissionLevel1Rate)} / L2 ${_formatPercent(invite.commissionLevel2Rate)} / L3 ${_formatPercent(invite.commissionLevel3Rate)}'
+                                ? '返利说明：总返利比例 ${_formatPercent(invite.commissionRate)}，三级分销比例 L1 ${_formatPercent(invite.commissionLevel1Rate)} / L2 ${_formatPercent(invite.commissionLevel2Rate)} / L3 ${_formatPercent(invite.commissionLevel3Rate)}'
                                 : 'Commission: ${_formatPercent(invite.commissionRate)}, L1 ${_formatPercent(invite.commissionLevel1Rate)} / L2 ${_formatPercent(invite.commissionLevel2Rate)} / L3 ${_formatPercent(invite.commissionLevel3Rate)}',
                             style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                           ),
@@ -644,45 +650,6 @@ class GatewayAccountPage extends HookConsumerWidget {
           ),
           const SizedBox(height: 10),
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.notifications_active_rounded, color: theme.colorScheme.primary),
-                      const SizedBox(width: 6),
-                      Text(g.noticesTitle, style: theme.textTheme.titleMedium),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (notices.value.isEmpty)
-                    Text(isZh ? '\u6682\u65e0\u516c\u544a' : 'No notices')
-                  else
-                    ...notices.value.map(
-                      (item) => ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(item.title),
-                        subtitle: item.updatedAt == null ? null : Text(item.updatedAt!),
-                        onTap: () => context.push('/gateway-account/notices'),
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () => context.push('/gateway-account/notices'),
-                      child: Text(g.openNotices),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Card(
             child: Column(
               children: [
                 ListTile(
@@ -705,10 +672,9 @@ class GatewayAccountPage extends HookConsumerWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.telegram_rounded),
-                  title: Text(g.telegram),
-                  subtitle: Text(summary.value?.telegramUrl ?? Constants.telegramChannelUrl),
-                  onTap: () =>
-                      UriUtils.tryLaunch(Uri.parse(summary.value?.telegramUrl ?? Constants.telegramChannelUrl)),
+                  title: Text(isZh ? 'Telegram交流群组' : 'Telegram Group'),
+                  subtitle: Text(summary.value?.telegramGroupUrl ?? 'https://t.me/+DWcAXq0TIO41OThl'),
+                  onTap: openTelegramGroup,
                 ),
                 ListTile(
                   leading: const Icon(Icons.code_rounded),
@@ -1031,7 +997,7 @@ class GatewayInvitePage extends HookConsumerWidget {
                     ),
                     child: Text(
                       isZh
-                          ? '返利规则：总佣金比例 ${_formatPercent(i.commissionRate)}，三级分销比例 L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}'
+                          ? '返利说明：总返利比例 ${_formatPercent(i.commissionRate)}，三级分销比例 L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}'
                           : 'Commission: ${_formatPercent(i.commissionRate)}, L1 ${_formatPercent(i.commissionLevel1Rate)} / L2 ${_formatPercent(i.commissionLevel2Rate)} / L3 ${_formatPercent(i.commissionLevel3Rate)}',
                       style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                     ),
