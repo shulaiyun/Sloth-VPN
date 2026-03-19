@@ -1,6 +1,6 @@
 ﻿# 树懒VPN（SlothVPN）
 
-> 基于 Hiddify 深度定制的多平台代理客户端，主打美观、易用与高度可定制化。
+> 基于 Hiddify 深度定制的多平台代理客户端，主打美观、易用与高度可定制化。对接xboard面板，新增了对接优惠劵和礼品卡功能。
 
 [GitHub 仓库](https://github.com/shulaiyun/Sloth-VPN) | [Telegram 频道](https://t.me/shulai2026)
 
