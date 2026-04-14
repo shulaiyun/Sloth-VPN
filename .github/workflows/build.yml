@@ -398,6 +398,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Ensure CocoaPods is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v pod >/dev/null 2>&1; then
+            sudo gem install cocoapods -N
+          fi
+          pod --version
+
       - name: Refresh macOS CocoaPods lock
         shell: bash
         run: |
