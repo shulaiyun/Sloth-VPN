@@ -1,7 +1,7 @@
-display_name: "\u6811\u61D2VPN"
+﻿display_name: "\u6811\u61D2VPN"
 publisher_display_name: "\u6811\u61D2VPN"
 identity_name: top.shulaiyun.slothvpn
-msix_version: 1.0.1.0
+msix_version: 1.0.2.0
 logo_path: windows\runner\resources\app_icon.ico
 capabilities: internetClient, internetClientServer, privateNetworkClientServer
 languages: ar, en-us, es-es, fa-ir, fr-fr, id-id, pt-br, ru-ru, tr-tr, zh-cn, zh-tw
@@ -19,3 +19,4 @@ startup_task:
 # publisher: CN=SlothVPN-Test
 # certificate_password: "1234"
 # install_certificate: "true"
+
