@@ -428,11 +428,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p out
-          if [ -d "build/macos/Build/Products/Release/SlothVPN.app" ]; then
-            ditto -c -k --keepParent "build/macos/Build/Products/Release/SlothVPN.app" "out/SlothVPN-macos.zip"
+          app_bundle="$(find build/macos/Build/Products/Release -maxdepth 1 -type d -name '*.app' | head -n 1 || true)"
+          if [ -n "$app_bundle" ] && [ -d "$app_bundle" ]; then
+            ditto -c -k --keepParent "$app_bundle" "out/SlothVPN-macos.zip"
           fi
           cp build-logs/*.log out/ 2>/dev/null || true
-          if compgen -G "out/*" > /dev/null; then
+          if find out -type f | grep -q .; then
             echo "has_files=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_files=false" >> "$GITHUB_OUTPUT"
