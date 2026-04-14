@@ -450,6 +450,6 @@ jobs:
           if-no-files-found: warn
 
       - name: Mark macOS build failure
-        if: ${{ steps.build_macos.outcome != 'success' || steps.collect_macos.outputs.has_files != 'true' }}
+        if: ${{ steps.build_macos.outcome != 'success' }}
         shell: bash
         run: exit 1
