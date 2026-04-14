@@ -429,7 +429,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          app_bundle="$(find build/macos/Build/Products/Release -maxdepth 1 -type d -name '*.app' | head -n 1 || true)"
+          app_bundle=""
+          for root in build build_out; do
+            candidate="$(find "$root/macos/Build/Products/Release" -maxdepth 1 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
+            if [ -n "$candidate" ] && [ -d "$candidate" ]; then
+              app_bundle="$candidate"
+              break
+            fi
+          done
           if [ -n "$app_bundle" ] && [ -d "$app_bundle" ]; then
             ditto -c -k --keepParent "$app_bundle" "out/SlothVPN-macos.zip"
           fi
