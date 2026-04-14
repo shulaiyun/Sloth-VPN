@@ -419,7 +419,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build-logs
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO flutter build macos --release --target=${{ env.BUILD_TARGET }} 2>&1 | tee build-logs/macos-build.log
+          flutter build macos --release --target=${{ env.BUILD_TARGET }} --no-codesign 2>&1 | tee build-logs/macos-build.log
           exit ${PIPESTATUS[0]}
 
       - name: Collect macOS artifacts
