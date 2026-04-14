@@ -419,8 +419,21 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build-logs
-          flutter build macos --release --target=${{ env.BUILD_TARGET }} --no-codesign 2>&1 | tee build-logs/macos-build.log
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO flutter build macos --release --target=${{ env.BUILD_TARGET }} 2>&1 | tee build-logs/macos-build.log
           exit ${PIPESTATUS[0]}
+
+      - name: Report macOS build failure details
+        if: ${{ steps.build_macos.outcome != 'success' }}
+        shell: bash
+        run: |
+          set +e
+          echo "==== macOS build log tail ===="
+          tail -n 120 build-logs/macos-build.log || true
+          reason="$(grep -E -i 'error|exception|failed|pod install|xcode|nanaimo' build-logs/macos-build.log | tail -n 1)"
+          if [ -z "$reason" ]; then
+            reason="macOS build failed but no concise error line was extracted; see macos-build.log artifact."
+          fi
+          echo "::error::${reason}"
 
       - name: Collect macOS artifacts
         id: collect_macos
