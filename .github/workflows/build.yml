@@ -407,6 +407,30 @@ jobs:
           fi
           pod --version
 
+      - name: Normalize Apple project file encoding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          targets = [
+              Path("macos/Runner.xcodeproj/project.pbxproj"),
+              Path("ios/Runner.xcodeproj/project.pbxproj"),
+              Path("ios/Runner/Info.plist"),
+          ]
+          for path in targets:
+              if not path.exists():
+                  continue
+              data = path.read_bytes()
+              if data.startswith(b"\xef\xbb\xbf"):
+                  data = data[3:]
+              data = data.replace(b"\r\n", b"\n")
+              path.write_bytes(data)
+          PY
+          for f in macos/Runner.xcodeproj/project.pbxproj ios/Runner.xcodeproj/project.pbxproj ios/Runner/Info.plist; do
+            [ -f "$f" ] && xxd -l 4 "$f" || true
+          done
+
       - name: Refresh macOS CocoaPods lock
         shell: bash
         run: |
