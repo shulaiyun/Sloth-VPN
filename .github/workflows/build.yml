@@ -453,10 +453,17 @@ jobs:
           set +e
           echo "==== macOS build log tail ===="
           tail -n 120 build-logs/macos-build.log || true
-          reason="$(grep -E -i 'error|exception|failed|pod install|xcode|nanaimo' build-logs/macos-build.log | tail -n 1)"
+          reason="$(grep -E -i 'Invalid character|ParseError|Nanaimo::Reader|xcodeproj|pod install|error|exception|failed' build-logs/macos-build.log | head -n 1)"
           if [ -z "$reason" ]; then
             reason="macOS build failed but no concise error line was extracted; see macos-build.log artifact."
           fi
+          for f in macos/Runner.xcodeproj/project.pbxproj ios/Runner.xcodeproj/project.pbxproj ios/Runner/Info.plist; do
+            if [ -f "$f" ]; then
+              bytes="$(xxd -g 1 -l 3 "$f" | awk 'NR==1{print $2\" \"$3\" \"$4}')"
+              first_line="$(head -n 1 "$f" | tr -d '\r')"
+              echo "::warning::${f} first-bytes=${bytes} first-line=${first_line}"
+            fi
+          done
           echo "::error::${reason}"
 
       - name: Collect macOS artifacts
