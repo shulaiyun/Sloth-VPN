@@ -11,6 +11,7 @@ class SlothGatewaySessionStore {
   static const _sessionIdKey = "sloth_gateway.session_id";
   static const _deviceIdKey = "sloth_gateway.device_id";
   static const _managedPullUrlKey = "sloth_gateway.managed_pull_url";
+  static const _managedProfileIdKey = "sloth_gateway.managed_profile_id";
   static const _lastBindIdKey = "sloth_gateway.last_bind_id";
   static const _lastBindDeviceIdKey = "sloth_gateway.last_bind_device_id";
 
@@ -18,6 +19,7 @@ class SlothGatewaySessionStore {
   String? readRefreshToken() => _preferences.getString(_refreshTokenKey);
   String? readSessionId() => _preferences.getString(_sessionIdKey);
   String? readManagedPullUrl() => _preferences.getString(_managedPullUrlKey);
+  String? readManagedProfileId() => _preferences.getString(_managedProfileIdKey);
   String? readLastBindId() => _preferences.getString(_lastBindIdKey);
   String? readLastBindDeviceId() => _preferences.getString(_lastBindDeviceIdKey);
 
@@ -28,12 +30,14 @@ class SlothGatewaySessionStore {
   }
 
   Future<void> saveManagedPullUrl(String url) => _preferences.setString(_managedPullUrlKey, url);
+  Future<void> saveManagedProfileId(String id) => _preferences.setString(_managedProfileIdKey, id);
 
   Future<void> clearAuth() async {
     await _preferences.remove(_accessTokenKey);
     await _preferences.remove(_refreshTokenKey);
     await _preferences.remove(_sessionIdKey);
     await _preferences.remove(_managedPullUrlKey);
+    await _preferences.remove(_managedProfileIdKey);
     await _preferences.remove(_lastBindIdKey);
     await _preferences.remove(_lastBindDeviceIdKey);
   }

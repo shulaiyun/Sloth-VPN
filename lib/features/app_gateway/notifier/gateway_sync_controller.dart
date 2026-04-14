@@ -1,13 +1,16 @@
 ﻿import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
+import 'package:hiddify/core/db/db.dart';
 import 'package:hiddify/core/notification/in_app_notification_controller.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/data/gateway_session_store.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
 import 'package:hiddify/features/profile/data/profile_data_providers.dart';
+import 'package:hiddify/features/profile/data/profile_repository.dart';
 import 'package:hiddify/features/profile/model/profile_entity.dart';
 import 'package:hiddify/utils/utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -199,8 +202,11 @@ class SlothGatewaySyncController with AppLogger {
       await _api.subscriptionSync(accessToken);
       final subscription = await _api.subscription(accessToken);
       if (subscription.pullUrl.isNotEmpty) {
-        await _upsertManagedSubscription(subscription.pullUrl);
+        final managedProfileId = await _upsertManagedSubscription(subscription.pullUrl, store);
         await store.saveManagedPullUrl(subscription.pullUrl);
+        if (managedProfileId != null) {
+          await store.saveManagedProfileId(managedProfileId);
+        }
       }
       loggy.info('gateway sync completed, reason=[$reason], pull_url=[${subscription.pullUrl}]');
       _notifyUiRefresh();
@@ -248,8 +254,48 @@ class SlothGatewaySyncController with AppLogger {
     }
   }
 
-  Future<void> _upsertManagedSubscription(String pullUrl) async {
+  Future<List<ProfileEntity>> _loadProfiles(ProfileRepository repository) async {
+    final allProfilesEither = await repository.watchAll().first;
+    return allProfilesEither.getOrElse((_) => const <ProfileEntity>[]);
+  }
+
+  bool _isManagedGatewayProfile(RemoteProfileEntity profile) {
+    final overrideName = profile.userOverride?.name?.trim() ?? "";
+    final profileName = profile.name.trim();
+    if (overrideName == "树懒VPN" || profileName == "树懒VPN") return true;
+    final normalized = "$overrideName $profileName".toLowerCase();
+    return normalized.contains("slothvpn managed") || normalized == "slothvpn";
+  }
+
+  RemoteProfileEntity? _pickManagedProfile(List<RemoteProfileEntity> profiles, {String? preferredId}) {
+    if (profiles.isEmpty) return null;
+    if (!_isBlank(preferredId)) {
+      for (final profile in profiles) {
+        if (profile.id == preferredId) return profile;
+      }
+    }
+
+    profiles.sort((a, b) {
+      if (a.active != b.active) return a.active ? -1 : 1;
+      return b.lastUpdate.compareTo(a.lastUpdate);
+    });
+    return profiles.first;
+  }
+
+  Future<String?> _upsertManagedSubscription(String pullUrl, SlothGatewaySessionStore store) async {
     final repository = await _ref.read(profileRepositoryProvider.future);
+    final dataSource = _ref.read(profileDataSourceProvider);
+
+    final knownManagedId = store.readManagedProfileId();
+    final profilesBefore = await _loadProfiles(repository);
+    final managedBefore = profilesBefore.whereType<RemoteProfileEntity>().where(_isManagedGatewayProfile).toList();
+    final targetBefore = _pickManagedProfile(managedBefore, preferredId: knownManagedId);
+
+    // pull_url can rotate token; force managed row to follow latest url before upsert.
+    if (targetBefore != null && targetBefore.url != pullUrl) {
+      await dataSource.edit(targetBefore.id, ProfileEntriesCompanion(url: Value(pullUrl)));
+    }
+
     final result = await repository
         .upsertRemote(
           pullUrl,
@@ -262,17 +308,25 @@ class SlothGatewaySyncController with AppLogger {
       (_) => loggy.info('managed subscription upserted'),
     );
 
-    final allProfilesEither = await repository.watchAll().first;
-    final allProfiles = allProfilesEither.getOrElse((_) => const <ProfileEntity>[]);
-    RemoteProfileEntity? matched;
-    for (final profile in allProfiles.whereType<RemoteProfileEntity>()) {
-      if (profile.url == pullUrl) {
-        matched = profile;
-        break;
-      }
+    final profilesAfter = await _loadProfiles(repository);
+    final managedAfter = profilesAfter.whereType<RemoteProfileEntity>().where(_isManagedGatewayProfile).toList();
+    final matchedByUrl = managedAfter.where((profile) => profile.url == pullUrl).toList();
+    final keep = _pickManagedProfile(
+      matchedByUrl.isNotEmpty ? matchedByUrl : managedAfter,
+      preferredId: targetBefore?.id ?? knownManagedId,
+    );
+    if (keep == null) return null;
+
+    for (final profile in managedAfter) {
+      if (profile.id == keep.id) continue;
+      final delete = await repository.deleteById(profile.id, profile.active).run();
+      delete.match(
+        (failure) => loggy.warning('failed to delete duplicated managed subscription', failure),
+        (_) => loggy.info('deleted duplicated managed subscription [${profile.id}]'),
+      );
     }
-    if (matched != null) {
-      await repository.setAsActive(matched.id).run();
-    }
+
+    await repository.setAsActive(keep.id).run();
+    return keep.id;
   }
 }
