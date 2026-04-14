@@ -408,13 +408,17 @@ jobs:
           pod --version
 
       - name: Refresh macOS CocoaPods lock
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           cd macos
           rm -f Podfile.lock
           rm -rf Pods
-          pod install --repo-update || pod install
+          if ! pod install --repo-update; then
+            echo "::warning::pod install --repo-update failed, retrying with pod install"
+            pod install || echo "::warning::pod install fallback failed, will rely on flutter build step"
+          fi
 
       - name: Build macOS app
         id: build_macos
@@ -423,6 +427,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build-logs
+          (cd macos && pod install) || true
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO flutter build macos --release --target=${{ env.BUILD_TARGET }} 2>&1 | tee build-logs/macos-build.log
           exit ${PIPESTATUS[0]}
 
