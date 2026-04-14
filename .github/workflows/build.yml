@@ -405,7 +405,7 @@ jobs:
           cd macos
           rm -f Podfile.lock
           rm -rf Pods
-          pod install --repo-update
+          pod install --repo-update || pod install
 
       - name: Build macOS app
         id: build_macos
