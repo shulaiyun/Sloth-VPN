@@ -441,11 +441,24 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p build-logs
           cd macos
-          pod install --repo-update --verbose 2>&1 | tee ../build-logs/macos-pod-install.log
-          exit ${PIPESTATUS[0]}
+          : > ../build-logs/macos-pod-install.log
+          ok=0
+          for attempt in 1 2 3; do
+            echo "=== pod install attempt ${attempt} (cdn) ===" | tee -a ../build-logs/macos-pod-install.log
+            if pod install --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+              ok=1
+              break
+            fi
+            echo "pod install attempt ${attempt} failed, retrying..." | tee -a ../build-logs/macos-pod-install.log
+            sleep $((attempt * 15))
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "=== pod install fallback (git Specs source) ===" | tee -a ../build-logs/macos-pod-install.log
+            pod install --repo-update --verbose --sources='https://github.com/CocoaPods/Specs.git' 2>&1 | tee -a ../build-logs/macos-pod-install.log
+          fi
 
       - name: Build macOS app
         id: build_macos
