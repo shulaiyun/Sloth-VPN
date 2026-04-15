@@ -436,8 +436,20 @@ jobs:
         run: |
           echo "Skipping forced Pod refresh to keep macOS CI stable."
 
+      - name: Install macOS pods
+        id: pod_install_macos
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build-logs
+          cd macos
+          pod install --verbose 2>&1 | tee ../build-logs/macos-pod-install.log
+          exit ${PIPESTATUS[0]}
+
       - name: Build macOS app
         id: build_macos
+        if: ${{ steps.pod_install_macos.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         run: |
@@ -447,13 +459,15 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Report macOS build failure details
-        if: ${{ steps.build_macos.outcome != 'success' }}
+        if: ${{ steps.pod_install_macos.outcome != 'success' || steps.build_macos.outcome != 'success' }}
         shell: bash
         run: |
           set +e
+          echo "==== macOS pod install log tail ===="
+          tail -n 120 build-logs/macos-pod-install.log || true
           echo "==== macOS build log tail ===="
           tail -n 120 build-logs/macos-build.log || true
-          reason="$(grep -E -i 'Invalid character|ParseError|Nanaimo::Reader|xcodeproj|pod install|error|exception|failed' build-logs/macos-build.log | head -n 1)"
+          reason="$(grep -E -i 'Invalid character|ParseError|Nanaimo::Reader|xcodeproj|pod install|error|exception|failed' build-logs/macos-pod-install.log build-logs/macos-build.log 2>/dev/null | head -n 1)"
           if [ -z "$reason" ]; then
             reason="macOS build failed but no concise error line was extracted; see macos-build.log artifact."
           fi
@@ -484,6 +498,7 @@ jobs:
           if [ -n "$app_bundle" ] && [ -d "$app_bundle" ]; then
             ditto -c -k --keepParent "$app_bundle" "out/SlothVPN-macos.zip"
           fi
+          cp build-logs/macos-pod-install.log out/ 2>/dev/null || true
           cp build-logs/*.log out/ 2>/dev/null || true
           if [ -f "out/SlothVPN-macos.zip" ]; then
             echo "has_zip=true" >> "$GITHUB_OUTPUT"
