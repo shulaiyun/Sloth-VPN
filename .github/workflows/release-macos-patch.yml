@@ -1,0 +1,60 @@
+name: Release macOS Patch
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Existing release tag, for example v1.0.2-20260415-16"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build_macos:
+    name: Build macOS Artifact
+    uses: ./.github/workflows/build.yml
+    with:
+      artifact-retention-days: 14
+      build-android: false
+      build-windows: false
+      build-linux: false
+      build-macos: true
+      package-windows-setup: false
+
+  publish_macos_asset:
+    name: Upload macOS Asset to Existing Release
+    needs: build_macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: release-assets
+
+      - name: Validate artifact presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la release-assets
+          if [ ! -f "release-assets/SlothVPN-macos.zip" ]; then
+            echo "::error::Missing release-assets/SlothVPN-macos.zip"
+            exit 1
+          fi
+
+      - name: Upload macOS zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          append_body: true
+          files: |
+            release-assets/SlothVPN-macos.zip
+

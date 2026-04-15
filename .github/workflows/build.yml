@@ -407,6 +407,16 @@ jobs:
           fi
           pod --version
 
+      - name: Cache CocoaPods specs and cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cocoapods/repos
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('macos/Podfile', 'macos/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
+
       - name: Normalize Apple project file encoding
         shell: bash
         run: |
@@ -431,11 +441,6 @@ jobs:
             [ -f "$f" ] && xxd -l 4 "$f" || true
           done
 
-      - name: Refresh macOS CocoaPods lock
-        shell: bash
-        run: |
-          echo "Skipping forced Pod refresh to keep macOS CI stable."
-
       - name: Install macOS pods
         id: pod_install_macos
         continue-on-error: true
@@ -445,19 +450,31 @@ jobs:
           mkdir -p build-logs
           cd macos
           : > ../build-logs/macos-pod-install.log
-          ok=0
-          for attempt in 1 2 3; do
-            echo "=== pod install attempt ${attempt} (cdn) ===" | tee -a ../build-logs/macos-pod-install.log
-            if pod install --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
-              ok=1
+          success=0
+          for attempt in 1 2; do
+            echo "=== pod install attempt ${attempt} (no repo update) ===" | tee -a ../build-logs/macos-pod-install.log
+            if pod install --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+              success=1
               break
             fi
-            echo "pod install attempt ${attempt} failed, retrying..." | tee -a ../build-logs/macos-pod-install.log
-            sleep $((attempt * 15))
+            echo "pod install (no update) failed, retrying..." | tee -a ../build-logs/macos-pod-install.log
+            sleep $((attempt * 10))
           done
-          if [ "$ok" -ne 1 ]; then
+          if [ "$success" -ne 1 ]; then
+            echo "=== pod install fallback (repo update) ===" | tee -a ../build-logs/macos-pod-install.log
+            if pod install --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+              success=1
+            fi
+          fi
+          if [ "$success" -ne 1 ]; then
             echo "=== pod install fallback (git Specs source) ===" | tee -a ../build-logs/macos-pod-install.log
-            pod install --repo-update --verbose --sources='https://github.com/CocoaPods/Specs.git' 2>&1 | tee -a ../build-logs/macos-pod-install.log
+            if pod install --repo-update --verbose --sources='https://github.com/CocoaPods/Specs.git' 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+              success=1
+            fi
+          fi
+          if [ "$success" -ne 1 ]; then
+            echo "::error::pod install failed after all retries" | tee -a ../build-logs/macos-pod-install.log
+            exit 1
           fi
 
       - name: Build macOS app
