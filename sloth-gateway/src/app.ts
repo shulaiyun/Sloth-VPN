@@ -14,6 +14,7 @@ import { registerPlanRoutes } from "./routes/plans";
 import { registerAccountRoutes } from "./routes/account";
 import { registerContentRoutes } from "./routes/content";
 import { registerSupportRoutes } from "./routes/support";
+import { registerUpdateRoutes } from "./routes/update";
 
 export const buildApp = () => {
   const app = Fastify({
@@ -55,6 +56,7 @@ export const buildApp = () => {
   registerContentRoutes(app, { sessions, xboard });
   registerSupportRoutes(app, { sessions, xboard });
   registerPaymentRoutes(app);
+  registerUpdateRoutes(app);
 
   app.setNotFoundHandler((request, reply) => {
     return fail(

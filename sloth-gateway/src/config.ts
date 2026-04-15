@@ -67,6 +67,14 @@ export const config = {
   newUserDiscountCouponCode: (process.env.NEW_USER_DISCOUNT_COUPON_CODE ?? "").trim(),
   newUserDiscountText:
     process.env.NEW_USER_DISCOUNT_TEXT ?? "新用户注册 7 天内购买套餐可享 20% 优惠",
+  appUpdateLatestVersion: (process.env.APP_UPDATE_LATEST_VERSION ?? "").trim(),
+  appUpdateLatestBuild: num(process.env.APP_UPDATE_LATEST_BUILD, 0),
+  appUpdateMinSupportedBuild: num(process.env.APP_UPDATE_MIN_SUPPORTED_BUILD, 0),
+  appUpdateForce: (process.env.APP_UPDATE_FORCE ?? "false").toLowerCase() === "true",
+  appUpdateTitle: (process.env.APP_UPDATE_TITLE ?? "").trim(),
+  appUpdateMessage: (process.env.APP_UPDATE_MESSAGE ?? "").trim(),
+  appUpdateDownloadUrl:
+    (process.env.APP_UPDATE_DOWNLOAD_URL ?? "https://github.com/shulaiyun/Sloth-VPN/releases/latest").trim(),
   allowedEmailSuffixes: csv(process.env.AUTH_ALLOWED_EMAIL_SUFFIXES),
   debugBindCode: (process.env.DEBUG_BIND_CODE ?? "false").toLowerCase() === "true",
 };

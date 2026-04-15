@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hiddify/core/http_client/dio_http_client.dart';
 import 'package:hiddify/core/model/constants.dart';
@@ -9,10 +9,67 @@ import 'package:hiddify/features/app_update/model/app_update_failure.dart';
 import 'package:hiddify/features/app_update/model/remote_version_entity.dart';
 import 'package:hiddify/utils/utils.dart';
 
+class GatewayUpdatePolicy {
+  const GatewayUpdatePolicy({
+    required this.enabled,
+    required this.latestVersion,
+    required this.latestBuild,
+    required this.minSupportedBuild,
+    required this.force,
+    required this.downloadUrl,
+    required this.title,
+    required this.message,
+  });
+
+  final bool enabled;
+  final String? latestVersion;
+  final int? latestBuild;
+  final int? minSupportedBuild;
+  final bool force;
+  final String? downloadUrl;
+  final String? title;
+  final String? message;
+
+  static GatewayUpdatePolicy? fromPayload(Map<String, dynamic> payload) {
+    final success = payload["success"] == true;
+    final data = payload["data"];
+    if (!success || data is! Map) return null;
+    final map = data.map((key, value) => MapEntry(key.toString(), value));
+
+    int? asPositiveInt(dynamic value) {
+      final parsed = int.tryParse(value?.toString() ?? "");
+      if (parsed == null || parsed <= 0) return null;
+      return parsed;
+    }
+
+    String? asText(dynamic value) {
+      final text = value?.toString().trim() ?? "";
+      return text.isEmpty ? null : text;
+    }
+
+    return GatewayUpdatePolicy(
+      enabled: map["enabled"] == true,
+      latestVersion: asText(map["latest_version"]),
+      latestBuild: asPositiveInt(map["latest_build"]),
+      minSupportedBuild: asPositiveInt(map["min_supported_build"]),
+      force: map["force"] == true,
+      downloadUrl: asText(map["download_url"]),
+      title: asText(map["title"]),
+      message: asText(map["message"]),
+    );
+  }
+}
+
 abstract interface class AppUpdateRepository {
   TaskEither<AppUpdateFailure, RemoteVersionEntity> getLatestVersion({
     bool includePreReleases = false,
     Release release = Release.general,
+  });
+
+  Future<GatewayUpdatePolicy?> getGatewayUpdatePolicy({
+    required String platform,
+    required String version,
+    required String buildNumber,
   });
 }
 
@@ -24,6 +81,32 @@ class AppUpdateRepositoryImpl with ExceptionHandler, InfraLogger implements AppU
       'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
 
   final DioHttpClient httpClient;
+
+  @override
+  Future<GatewayUpdatePolicy?> getGatewayUpdatePolicy({
+    required String platform,
+    required String version,
+    required String buildNumber,
+  }) async {
+    final uri = Uri.parse(
+      "${Constants.gatewayBaseUrl}/api/app/v1/app/update-policy",
+    ).replace(queryParameters: {"platform": platform, "version": version, "build_number": buildNumber});
+
+    try {
+      final response = await httpClient.get<Map<String, dynamic>>(uri.toString(), userAgent: _githubApiUserAgent);
+      if (response.statusCode != 200 || response.data == null) {
+        loggy.warning("gateway update-policy returned non-200: ${response.statusCode}");
+        return null;
+      }
+      return GatewayUpdatePolicy.fromPayload(response.data!);
+    } on DioException catch (error, stackTrace) {
+      loggy.warning("gateway update-policy request failed", error, stackTrace);
+      return null;
+    } catch (error, stackTrace) {
+      loggy.warning("unexpected gateway update-policy error", error, stackTrace);
+      return null;
+    }
+  }
 
   @override
   TaskEither<AppUpdateFailure, RemoteVersionEntity> getLatestVersion({
@@ -108,4 +191,3 @@ class AppUpdateRepositoryImpl with ExceptionHandler, InfraLogger implements AppU
     return null;
   }
 }
-

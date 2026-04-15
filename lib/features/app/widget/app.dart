@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/localization/locale_extensions.dart';
 import 'package:hiddify/core/localization/locale_preferences.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/model/constants.dart';
+import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
 import 'package:hiddify/core/router/deep_linking/my_app_links.dart';
 import 'package:hiddify/core/router/go_router/go_router_notifier.dart';
 import 'package:hiddify/core/router/go_router/helper/active_breakpoint_notifier.dart';
@@ -18,6 +20,7 @@ import 'package:hiddify/core/theme/app_theme.dart';
 import 'package:hiddify/core/theme/theme_preferences.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_sync_controller.dart';
 import 'package:hiddify/features/app_update/notifier/app_update_notifier.dart';
+import 'package:hiddify/features/app_update/notifier/app_update_state.dart';
 import 'package:hiddify/features/connection/widget/connection_wrapper.dart';
 import 'package:hiddify/features/per_app_proxy/overview/per_app_proxy_service_notifier.dart';
 import 'package:hiddify/features/profile/notifier/profiles_update_notifier.dart';
@@ -66,10 +69,26 @@ class App extends HookConsumerWidget with WidgetsBindingObserver, PresLogger {
     final upgrader = ref.watch(upgraderProvider);
     final activeBreakpoint = Breakpoint(context).activeBreakpoint;
     final gatewaySync = ref.watch(slothGatewaySyncControllerProvider);
+    final hasShownUpdateDialog = useState(false);
 
     ref.listen(foregroundProfilesUpdateNotifierProvider, (_, _) {});
     if (PlatformUtils.isAndroid) ref.listen(perAppProxyServiceProvider, (_, _) {});
     if (PlatformUtils.isDesktop) ref.listen(systemTrayNotifierProvider, (_, _) {});
+    ref.listen(appUpdateNotifierProvider, (_, next) async {
+      if (hasShownUpdateDialog.value) return;
+      if (next case AppUpdateStateAvailable(:final versionInfo)) {
+        final appInfo = ref.read(appInfoProvider).valueOrNull;
+        if (appInfo == null || !context.mounted) return;
+        hasShownUpdateDialog.value = true;
+        await ref
+            .read(dialogNotifierProvider.notifier)
+            .showNewVersion(
+              currentVersion: appInfo.presentVersion,
+              newVersion: versionInfo,
+              canIgnore: !ref.read(appUpdateNotifierProvider.notifier).forceUpdate,
+            );
+      }
+    });
     ref.listen(myAppLinksProvider, (_, next) {
       final link = next.valueOrNull;
       if (link != null) {
@@ -89,6 +108,12 @@ class App extends HookConsumerWidget with WidgetsBindingObserver, PresLogger {
       Future.microtask(() => gatewaySync.bootstrapIfLoggedIn());
       return null;
     }, const []);
+
+    useEffect(() {
+      Future.microtask(() => ref.read(appUpdateNotifierProvider.notifier).check());
+      return null;
+    }, const []);
+
     return WindowWrapper(
       ShortcutWrapper(
         ToastificationWrapper(
