@@ -444,7 +444,7 @@ jobs:
           set -o pipefail
           mkdir -p build-logs
           cd macos
-          pod install --verbose 2>&1 | tee ../build-logs/macos-pod-install.log
+          pod install --repo-update --verbose 2>&1 | tee ../build-logs/macos-pod-install.log
           exit ${PIPESTATUS[0]}
 
       - name: Build macOS app
