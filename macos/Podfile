@@ -43,8 +43,18 @@ post_install do |installer|
 
   pods_project = installer.pods_project
   deployment_target_key = 'MACOSX_DEPLOYMENT_TARGET'
-  deployment_targets = pods_project.build_configurations.map{ |config| config.build_settings[deployment_target_key] }
-  minimum_deployment_target = deployment_targets.min_by{ |version| Gem::Version.new(version) }
+  deployment_targets = pods_project
+    .build_configurations
+    .map { |config| config.build_settings[deployment_target_key] }
+    .compact
+    .reject(&:empty?)
+
+  minimum_deployment_target =
+    if deployment_targets.empty?
+      '10.15'
+    else
+      deployment_targets.min_by { |version| Gem::Version.new(version) }
+    end
 
   puts 'Minimal deployment target is ' + minimum_deployment_target
   puts 'Setting each pod deployment target to ' + minimum_deployment_target
