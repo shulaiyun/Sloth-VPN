@@ -52,7 +52,7 @@ jobs:
       build-android: true
       build-windows: true
       build-linux: true
-      build-macos: false
+      build-macos: true
       package-windows-setup: true
 
   build_manual:
