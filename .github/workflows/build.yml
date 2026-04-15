@@ -450,28 +450,30 @@ jobs:
           mkdir -p build-logs
           cd macos
           : > ../build-logs/macos-pod-install.log
+          # Flutter plugin upgrades can make Podfile.lock stale (e.g. sqlite3 version mismatch).
+          # Regenerate lock on CI for deterministic successful resolution.
+          rm -f Podfile.lock
+
           success=0
-          for attempt in 1 2; do
-            echo "=== pod install attempt ${attempt} (no repo update) ===" | tee -a ../build-logs/macos-pod-install.log
-            if pod install --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+          for attempt in 1 2 3; do
+            echo "=== pod install attempt ${attempt} (repo update) ===" | tee -a ../build-logs/macos-pod-install.log
+            if pod install --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
               success=1
               break
             fi
-            echo "pod install (no update) failed, retrying..." | tee -a ../build-logs/macos-pod-install.log
-            sleep $((attempt * 10))
+            echo "pod install failed, retrying..." | tee -a ../build-logs/macos-pod-install.log
+            sleep $((attempt * 12))
           done
+
           if [ "$success" -ne 1 ]; then
-            echo "=== pod install fallback (repo update) ===" | tee -a ../build-logs/macos-pod-install.log
-            if pod install --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
-              success=1
+            echo "=== pod fallback: update sqlite3 then install ===" | tee -a ../build-logs/macos-pod-install.log
+            if pod update sqlite3 --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+              if pod install --repo-update --verbose 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
+                success=1
+              fi
             fi
           fi
-          if [ "$success" -ne 1 ]; then
-            echo "=== pod install fallback (git Specs source) ===" | tee -a ../build-logs/macos-pod-install.log
-            if pod install --repo-update --verbose --sources='https://github.com/CocoaPods/Specs.git' 2>&1 | tee -a ../build-logs/macos-pod-install.log; then
-              success=1
-            fi
-          fi
+
           if [ "$success" -ne 1 ]; then
             echo "::error::pod install failed after all retries" | tee -a ../build-logs/macos-pod-install.log
             exit 1
