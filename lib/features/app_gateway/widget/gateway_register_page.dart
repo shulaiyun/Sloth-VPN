@@ -15,7 +15,9 @@ class GatewayRegisterPage extends HookConsumerWidget {
   bool _isSuffixAllowed(String email, GatewayAuthPolicy? policy) {
     if (policy == null || policy.allowedEmailSuffixes.isEmpty) return true;
     final lower = email.toLowerCase();
-    return policy.allowedEmailSuffixes.any((suffix) => lower.endsWith(suffix.toLowerCase()));
+    return policy.allowedEmailSuffixes.any(
+      (suffix) => lower.endsWith(suffix.toLowerCase()),
+    );
   }
 
   @override
@@ -31,14 +33,39 @@ class GatewayRegisterPage extends HookConsumerWidget {
     final policy = useState<GatewayAuthPolicy?>(null);
     final policyLoading = useState(true);
 
+    String? safeRedirect() {
+      final target = redirectTo?.trim();
+      if (target == null || !target.startsWith('/')) return null;
+      return target;
+    }
+
+    void finishAfterAuth() {
+      final target = safeRedirect();
+      if (target != null) {
+        context.go(target);
+        return;
+      }
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+        return;
+      }
+      context.go("/gateway-account");
+    }
+
     Future<void> openCaptchaGuide(GatewayApiException error) async {
       final target = error.captchaActionUrl ?? error.captchaRegisterUrl;
       if (target == null || target.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
         return;
       }
 
-      final openLabel = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh')
+      final openLabel =
+          Localizations.localeOf(
+            context,
+          ).languageCode.toLowerCase().startsWith('zh')
           ? "去网页完成验证"
           : "Open Web Verification";
 
@@ -48,20 +75,31 @@ class GatewayRegisterPage extends HookConsumerWidget {
           title: Text(g.registerTitle),
           content: Text(error.message),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(g.back)),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(openLabel)),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(g.back),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(openLabel),
+            ),
           ],
         ),
       );
       if (action != true || !context.mounted) return;
 
-      await context.push("/gateway-account/webview", extra: <String, String>{"url": target, "title": openLabel});
+      await context.push(
+        "/gateway-account/webview",
+        extra: <String, String>{"url": target, "title": openLabel},
+      );
     }
 
     Future<void> loadPolicy() async {
       policyLoading.value = true;
       try {
-        policy.value = await ref.read(slothGatewayPortalControllerProvider).fetchAuthPolicy();
+        policy.value = await ref
+            .read(slothGatewayPortalControllerProvider)
+            .fetchAuthPolicy();
       } catch (_) {
         policy.value = GatewayAuthPolicy(
           allowedEmailSuffixes: const [],
@@ -76,35 +114,57 @@ class GatewayRegisterPage extends HookConsumerWidget {
 
     useEffect(() {
       Future.microtask(loadPolicy);
+      Future.microtask(() async {
+        final pendingInviteCode = await ref
+            .read(slothGatewayPortalControllerProvider)
+            .readPendingInviteCode();
+        if (pendingInviteCode != null &&
+            pendingInviteCode.trim().isNotEmpty &&
+            inviteCodeController.text.trim().isEmpty) {
+          inviteCodeController.text = pendingInviteCode.trim();
+        }
+      });
       return null;
     }, const []);
 
     Future<void> sendVerify() async {
       final email = emailController.text.trim();
       if (email.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.enterEmailFirst)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.enterEmailFirst)));
         return;
       }
       if (!_isSuffixAllowed(email, policy.value)) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.emailSuffixRestricted)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.emailSuffixRestricted)));
         return;
       }
 
       isSendingCode.value = true;
       try {
-        await ref.read(slothGatewayPortalControllerProvider).sendEmailVerify(email);
+        await ref
+            .read(slothGatewayPortalControllerProvider)
+            .sendEmailVerify(email);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.verifyCodeSent)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.verifyCodeSent)));
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         if (error.requiresCaptcha) {
           await openCaptchaGuide(error);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.sendFailed(error.message))));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(g.sendFailed(error.message))));
         }
       } catch (_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.sendFailed(g.unknownError))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.sendFailed(g.unknownError))));
       } finally {
         isSendingCode.value = false;
       }
@@ -116,23 +176,35 @@ class GatewayRegisterPage extends HookConsumerWidget {
       final authPolicy = policy.value;
 
       if (email.isEmpty || password.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.enterEmailPassword)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.enterEmailPassword)));
         return;
       }
       if (!_isSuffixAllowed(email, authPolicy)) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.emailSuffixRestricted)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.emailSuffixRestricted)));
         return;
       }
       if (authPolicy != null && !authPolicy.registerEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerClosedHint)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.registerClosedHint)));
         return;
       }
-      if ((authPolicy?.emailVerifyRequired ?? false) && emailCodeController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.emailCodeLabel)));
+      if ((authPolicy?.emailVerifyRequired ?? false) &&
+          emailCodeController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.emailCodeLabel)));
         return;
       }
-      if ((authPolicy?.inviteCodeRequired ?? false) && inviteCodeController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.inviteCodeLabel)));
+      if ((authPolicy?.inviteCodeRequired ?? false) &&
+          inviteCodeController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.inviteCodeLabel)));
         return;
       }
 
@@ -151,23 +223,28 @@ class GatewayRegisterPage extends HookConsumerWidget {
         final rewardMessage = reward == null
             ? g.registerSucceeded
             : (reward.granted && reward.message.trim().isNotEmpty)
-                ? '${g.registerSucceeded}\n${reward.message.trim()}'
-                : (reward.attempted && reward.message.trim().isNotEmpty)
-                    ? '${g.registerSucceeded}\n${reward.message.trim()}'
-                    : g.registerSucceeded;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(rewardMessage)));
-        final target = (redirectTo != null && redirectTo!.startsWith('/')) ? redirectTo! : "/gateway-account";
-        context.go(target);
+            ? '${g.registerSucceeded}\n${reward.message.trim()}'
+            : (reward.attempted && reward.message.trim().isNotEmpty)
+            ? '${g.registerSucceeded}\n${reward.message.trim()}'
+            : g.registerSucceeded;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(rewardMessage)));
+        finishAfterAuth();
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
         if (error.requiresCaptcha) {
           await openCaptchaGuide(error);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerFailed(error.message))));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(g.registerFailed(error.message))),
+          );
         }
       } catch (_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.registerFailed(g.unknownError))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(g.registerFailed(g.unknownError))),
+        );
       } finally {
         isLoading.value = false;
       }
@@ -177,7 +254,10 @@ class GatewayRegisterPage extends HookConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.person_add_alt_1_rounded, color: theme.colorScheme.primary),
+            Icon(
+              Icons.person_add_alt_1_rounded,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(width: 8),
             Text(g.registerTitle),
           ],
@@ -206,7 +286,10 @@ class GatewayRegisterPage extends HookConsumerWidget {
                     shape: BoxShape.circle,
                     color: theme.colorScheme.primary.withValues(alpha: 0.18),
                   ),
-                  child: Icon(Icons.app_registration_rounded, color: theme.colorScheme.primary),
+                  child: Icon(
+                    Icons.app_registration_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -223,15 +306,21 @@ class GatewayRegisterPage extends HookConsumerWidget {
           ),
           const SizedBox(height: 10),
           if (policyLoading.value) const LinearProgressIndicator(),
-          if (policy.value != null && policy.value!.allowedEmailSuffixes.isNotEmpty)
+          if (policy.value != null &&
+              policy.value!.allowedEmailSuffixes.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(g.emailSuffixHint(policy.value!.allowedEmailSuffixes)),
+              child: Text(
+                g.emailSuffixHint(policy.value!.allowedEmailSuffixes),
+              ),
             ),
           if (policy.value != null && !policy.value!.registerEnabled)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(g.registerClosedHint, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                g.registerClosedHint,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           const SizedBox(height: 16),
           TextField(
@@ -257,7 +346,9 @@ class GatewayRegisterPage extends HookConsumerWidget {
           TextField(
             controller: emailCodeController,
             decoration: InputDecoration(
-              labelText: (policy.value?.emailVerifyRequired ?? false) ? "${g.emailCodeLabel} *" : g.emailCodeLabel,
+              labelText: (policy.value?.emailVerifyRequired ?? false)
+                  ? "${g.emailCodeLabel} *"
+                  : g.emailCodeLabel,
               prefixIcon: const Icon(Icons.mark_email_read_rounded),
               border: const OutlineInputBorder(),
             ),
@@ -274,19 +365,32 @@ class GatewayRegisterPage extends HookConsumerWidget {
           TextField(
             controller: inviteCodeController,
             decoration: InputDecoration(
-              labelText: (policy.value?.inviteCodeRequired ?? false) ? "${g.inviteCodeLabel} *" : g.inviteCodeLabel,
+              labelText: (policy.value?.inviteCodeRequired ?? false)
+                  ? "${g.inviteCodeLabel} *"
+                  : g.inviteCodeLabel,
               prefixIcon: const Icon(Icons.confirmation_number_rounded),
               border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: isLoading.value || (policy.value != null && !policy.value!.registerEnabled) ? null : register,
-            icon: Icon(isLoading.value ? Icons.hourglass_top_rounded : Icons.rocket_launch_rounded),
+            onPressed:
+                isLoading.value ||
+                    (policy.value != null && !policy.value!.registerEnabled)
+                ? null
+                : register,
+            icon: Icon(
+              isLoading.value
+                  ? Icons.hourglass_top_rounded
+                  : Icons.rocket_launch_rounded,
+            ),
             label: Text(isLoading.value ? g.registering : g.registerAndLogin),
           ),
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: isLoading.value ? null : () => context.pop(), child: Text(g.back)),
+          OutlinedButton(
+            onPressed: isLoading.value ? null : () => context.pop(),
+            child: Text(g.back),
+          ),
         ],
       ),
     );

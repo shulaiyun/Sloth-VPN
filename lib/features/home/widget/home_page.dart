@@ -1,10 +1,11 @@
-﻿import 'package:dartx/dartx.dart';
+import 'package:dartx/dartx.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/model/constants.dart';
+import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
 import 'package:hiddify/core/theme/sloth_design_tokens.dart';
 import 'package:hiddify/core/widget/sloth_icon.dart';
@@ -16,8 +17,7 @@ import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
 import 'package:hiddify/features/connection/model/connection_status.dart';
 import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
 import 'package:hiddify/features/home/widget/connection_button.dart';
-import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
-import 'package:hiddify/features/profile/widget/profile_tile.dart';
+import 'package:hiddify/features/per_app_proxy/model/per_app_proxy_mode.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_delay_indicator.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
@@ -34,7 +34,6 @@ class HomePage extends HookConsumerWidget {
     final theme = Theme.of(context);
     final t = ref.watch(translationsProvider).requireValue;
     final gatewayRefreshTick = ref.watch(slothGatewayUiRefreshTickProvider);
-    final activeProfile = ref.watch(activeProfileProvider);
     final connectionStatus = ref.watch(connectionNotifierProvider);
     final activeProxy = ref.watch(activeProxyNotifierProvider).valueOrNull;
     final delay = activeProxy?.urlTestDelay ?? 0;
@@ -121,26 +120,18 @@ class HomePage extends HookConsumerWidget {
                       ),
                     ),
                   ),
+                  const SliverToBoxAdapter(
+                    child: Padding(padding: EdgeInsets.fromLTRB(14, 4, 14, 0), child: _RoutingModeCard()),
+                  ),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
                       child: _GatewayEntryCard(refreshSignal: gatewayRefreshTick),
                     ),
                   ),
-                  switch (activeProfile) {
-                    AsyncData(value: final profile?) => SliverToBoxAdapter(
-                      child: ProfileTile(
-                        profile: profile,
-                        isMain: true,
-                        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                        color: theme.colorScheme.surfaceContainer,
-                      ),
-                    ),
-                    _ => const SliverToBoxAdapter(),
-                  },
                   const SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(14, 0, 14, 0),
+                      padding: EdgeInsets.fromLTRB(14, 2, 14, 0),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -341,6 +332,100 @@ class _StatMini extends StatelessWidget {
   }
 }
 
+class _RoutingModeCard extends ConsumerWidget {
+  const _RoutingModeCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
+    final currentMode = ref.watch(Preferences.perAppProxyMode);
+    final selectedMode = currentMode == PerAppProxyMode.off ? PerAppProxyMode.off : PerAppProxyMode.exclude;
+
+    Future<void> updateMode(PerAppProxyMode mode) async {
+      await ref.read(Preferences.perAppProxyMode.notifier).update(mode);
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.route_rounded, color: theme.colorScheme.primary),
+                const Gap(8),
+                Expanded(
+                  child: Text(
+                    isZh ? '连接模式控制台' : 'Connection mode console',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  ),
+                  child: Text(
+                    selectedMode == PerAppProxyMode.off ? (isZh ? '全局' : 'Global') : (isZh ? '分流' : 'Split'),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Gap(8),
+            SegmentedButton<PerAppProxyMode>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment<PerAppProxyMode>(
+                  value: PerAppProxyMode.off,
+                  icon: const Icon(Icons.public_rounded),
+                  label: Text(isZh ? '全局模式' : 'Global'),
+                ),
+                ButtonSegment<PerAppProxyMode>(
+                  value: PerAppProxyMode.exclude,
+                  icon: const Icon(Icons.hub_rounded),
+                  label: Text(isZh ? '分流模式' : 'Split tunnel'),
+                ),
+              ],
+              selected: {selectedMode},
+              onSelectionChanged: (selection) {
+                final next = selection.isEmpty ? PerAppProxyMode.off : selection.first;
+                updateMode(next);
+              },
+            ),
+            const Gap(8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.pushNamed('perAppProxy'),
+                    icon: const Icon(Icons.apps_rounded),
+                    label: Text(isZh ? '管理分流应用' : 'Manage split apps'),
+                  ),
+                ),
+                const Gap(8),
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => context.pushNamed('settings'),
+                    icon: const Icon(Icons.tune_rounded),
+                    label: Text(isZh ? '高级设置' : 'Advanced'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _GatewayEntryCard extends ConsumerStatefulWidget {
   const _GatewayEntryCard({required this.refreshSignal});
 
@@ -363,7 +448,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
     return "${(bytes / mb).toStringAsFixed(2)} MB";
   }
 
-  String _formatIsoTime(String? value) {
+  String _formatIsoDate(String? value) {
     if (value == null || value.isEmpty) return "--";
     DateTime? dt = DateTime.tryParse(value);
     if (dt == null) {
@@ -376,7 +461,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
     if (dt == null || dt.year <= 1970) return "--";
     final local = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
-    return "${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}";
+    return "${local.year}-${two(local.month)}-${two(local.day)}";
   }
 
   @override
@@ -466,8 +551,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
     final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
     final theme = Theme.of(context);
     final trafficRemaining = _summary?.trafficRemaining ?? 0;
-    final trafficTotal = _summary?.trafficTotal ?? 0;
-    final trafficRemainingRate = trafficTotal <= 0 ? 0.0 : (trafficRemaining / trafficTotal).clamp(0.0, 1.0);
+    final accountRedirect = Uri.encodeComponent("/gateway-account");
 
     if (_loading) {
       return Card(
@@ -486,7 +570,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -503,87 +587,18 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             if (_loggedIn) ...[
-              Row(
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 4,
-                    child: _MiniStatusTile(label: g.homeExpireAt, value: _formatIsoTime(_summary?.expiredAt)),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 3,
-                    child: _TrafficMiniStatusTile(
-                      label: g.homeRemainingTraffic,
-                      value: _formatTraffic(trafficRemaining),
-                      remainingRate: trafficRemainingRate,
-                    ),
-                  ),
+                  _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
+                  _MiniStatusTile(label: g.homeExpireAt, value: _formatIsoDate(_summary?.expiredAt)),
+                  _MiniStatusTile(label: g.homeRemainingTraffic, value: _formatTraffic(trafficRemaining)),
                 ],
               ),
-            ] else ...[
-              Text(g.homeGuide, style: theme.textTheme.bodySmall),
               const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
-                      theme.colorScheme.secondaryContainer.withValues(alpha: 0.72),
-                    ],
-                  ),
-                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.45)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF2254C9), Color(0xFF5D7BFF), Color(0xFF34C3D0)],
-                        ),
-                        boxShadow: SlothShadows.card,
-                      ),
-                      child: const Icon(Icons.campaign_rounded, size: 21, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isZh
-                            ? '新用户专享：注册后免费送三天的使用时长，登录后会自动同步节点'
-                            : 'New users get a 3-day free trial after registration, then auto sync starts after login.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 4),
-            if (_loggedIn)
               Row(
                 children: [
                   Expanded(
@@ -598,7 +613,7 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                     child: _GatewayEntryOutlineAction(
                       onPressed: () => context.go("/gateway-plans"),
                       icon: const Icon(Icons.shopping_bag_rounded),
-                      label: isZh ? '查看套餐/续费' : 'Plans / Renew',
+                      label: isZh ? '套餐/续费' : 'Plans',
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -612,21 +627,27 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
                     ),
                   ),
                 ],
-              )
-            else
+              ),
+            ] else ...[
+              Text(g.homeGuide, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 8,
                 children: [
                   _GatewayEntryLoginAction(
-                    onPressed: () => context.push("/home/gateway-login"),
+                    onPressed: () => context.push("/home/gateway-login?redirect=$accountRedirect"),
                     icon: const Icon(Icons.login_rounded),
                     label: g.login,
                   ),
-                  OutlinedButton(onPressed: () => context.push("/home/gateway-register"), child: Text(g.register)),
+                  OutlinedButton(
+                    onPressed: () => context.push("/home/gateway-register?redirect=$accountRedirect"),
+                    child: Text(g.register),
+                  ),
                   TextButton(onPressed: () => context.go("/gateway-plans"), child: Text(g.viewPlans)),
                 ],
               ),
+            ],
           ],
         ),
       ),
@@ -766,70 +787,3 @@ class _MiniStatusTile extends StatelessWidget {
     );
   }
 }
-
-class _TrafficMiniStatusTile extends StatelessWidget {
-  const _TrafficMiniStatusTile({required this.label, required this.value, required this.remainingRate});
-
-  final String label;
-  final String value;
-  final double remainingRate;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final safeRate = remainingRate.clamp(0.0, 1.0);
-    final isLight = theme.brightness == Brightness.light;
-    final tileBgColor = isLight
-        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.9)
-        : theme.colorScheme.surfaceContainerHigh;
-    final fillColor = Color.lerp(
-      isLight ? Colors.orange.shade600.withValues(alpha: 0.45) : Colors.orange.shade500.withValues(alpha: 0.22),
-      isLight ? Colors.green.shade600.withValues(alpha: 0.6) : Colors.green.shade500.withValues(alpha: 0.26),
-      safeRate,
-    )!;
-    final textColor = isLight
-        ? theme.colorScheme.onSurface
-        : (safeRate >= 0.78 ? Colors.white : theme.colorScheme.onSurface);
-    final labelColor = isLight
-        ? theme.colorScheme.onSurfaceVariant
-        : (safeRate >= 0.78 ? Colors.white.withValues(alpha: 0.88) : theme.textTheme.labelSmall?.color);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: tileBgColor,
-          border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: isLight ? 0.6 : 0.25)),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: safeRate,
-                child: ColoredBox(color: fillColor),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: theme.textTheme.labelSmall?.copyWith(color: labelColor)),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: textColor),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-

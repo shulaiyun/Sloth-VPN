@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/model/failures.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
 import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
 import 'package:hiddify/core/theme/sloth_design_tokens.dart';
@@ -115,14 +114,38 @@ class _ConnectionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final size = MediaQuery.sizeOf(context);
+    final ultraCompact = size.width < 360 || size.height < 740;
+    final compact = ultraCompact || size.width < 390 || size.height < 820;
+    final outerSize = ultraCompact
+        ? 118.0
+        : compact
+        ? 130.0
+        : 148.0;
+    final innerSize = ultraCompact
+        ? 76.0
+        : compact
+        ? 86.0
+        : 96.0;
+    final iconSize = ultraCompact
+        ? 34.0
+        : compact
+        ? 40.0
+        : 44.0;
+    final iconPadding = ultraCompact
+        ? 22.0
+        : compact
+        ? 26.0
+        : 30.0;
+    final labelGap = ultraCompact ? 6.0 : 10.0;
     Widget button = Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(blurRadius: 28, color: buttonColor.withValues(alpha: 0.44))],
+        boxShadow: [BoxShadow(blurRadius: compact ? 20 : 28, color: buttonColor.withValues(alpha: 0.44))],
       ),
-      width: 148,
-      height: 148,
+      width: outerSize,
+      height: outerSize,
       child: Material(
         key: const ValueKey("home_connection_button"),
         shape: const CircleBorder(),
@@ -150,8 +173,8 @@ class _ConnectionButton extends StatelessWidget {
                 ),
                 child: Center(
                   child: Container(
-                    width: 96,
-                    height: 96,
+                    width: innerSize,
+                    height: innerSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -160,13 +183,17 @@ class _ConnectionButton extends StatelessWidget {
                         colors: [Colors.white.withValues(alpha: 0.96), color.withValues(alpha: 0.12)],
                       ),
                     ),
-                    padding: const EdgeInsets.all(30),
+                    padding: EdgeInsets.all(iconPadding),
                     child: child,
                   ),
                 ),
               );
             },
-            child: SlothIcon(connected ? SlothIconType.connect : SlothIconType.sloth, size: 44, color: buttonColor),
+            child: SlothIcon(
+              connected ? SlothIconType.connect : SlothIconType.sloth,
+              size: iconSize,
+              color: buttonColor,
+            ),
           ),
         ),
       ).animate(target: enabled ? 0 : 1).blurXY(end: 1),
@@ -181,12 +208,15 @@ class _ConnectionButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Semantics(button: true, enabled: enabled, label: label, child: button),
-        const Gap(10),
+        Gap(labelGap),
         ExcludeSemantics(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedText(label, style: Theme.of(context).textTheme.titleMedium),
+              AnimatedText(
+                label,
+                style: compact ? Theme.of(context).textTheme.titleSmall : Theme.of(context).textTheme.titleMedium,
+              ),
               if (secureLabel.isNotEmpty)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

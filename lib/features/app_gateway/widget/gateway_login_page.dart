@@ -21,26 +21,55 @@ class GatewayLoginPage extends HookConsumerWidget {
     final passwordController = useTextEditingController();
     final isLoading = useState(false);
 
+    String? safeRedirect() {
+      final target = redirectTo?.trim();
+      if (target == null || !target.startsWith('/')) return null;
+      return target;
+    }
+
+    void finishAfterAuth() {
+      final target = safeRedirect();
+      if (target != null) {
+        context.go(target);
+        return;
+      }
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+        return;
+      }
+      context.go("/gateway-account");
+    }
+
     Future<void> submit() async {
       final email = emailController.text.trim();
       final password = passwordController.text.trim();
       if (email.isEmpty || password.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.enterEmailPassword)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.enterEmailPassword)));
         return;
       }
       isLoading.value = true;
       try {
-        await ref.read(slothGatewayPortalControllerProvider).login(email: email, password: password);
+        await ref
+            .read(slothGatewayPortalControllerProvider)
+            .login(email: email, password: password);
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginSucceeded)));
-        final target = (redirectTo != null && redirectTo!.startsWith('/')) ? redirectTo! : "/gateway-account";
-        context.go(target);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.loginSucceeded)));
+        finishAfterAuth();
       } on GatewayApiException catch (error) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginFailed(error.message))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.loginFailed(error.message))));
       } catch (_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.loginFailed(g.unknownError))));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(g.loginFailed(g.unknownError))));
       } finally {
         isLoading.value = false;
       }
@@ -79,7 +108,10 @@ class GatewayLoginPage extends HookConsumerWidget {
                     shape: BoxShape.circle,
                     color: theme.colorScheme.primary.withValues(alpha: 0.18),
                   ),
-                  child: Icon(Icons.login_rounded, color: theme.colorScheme.primary),
+                  child: Icon(
+                    Icons.login_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -117,22 +149,43 @@ class GatewayLoginPage extends HookConsumerWidget {
           const SizedBox(height: 16),
           _GatewayLoginPrimaryAction(
             onPressed: isLoading.value ? null : submit,
-            icon: Icon(isLoading.value ? Icons.hourglass_top_rounded : Icons.login_rounded),
+            icon: Icon(
+              isLoading.value
+                  ? Icons.hourglass_top_rounded
+                  : Icons.login_rounded,
+            ),
             label: isLoading.value ? g.loggingIn : g.loginButton,
           ),
           const SizedBox(height: 8),
           TextButton(
-            onPressed: isLoading.value ? null : () => context.push("/home/gateway-forgot-password"),
+            onPressed: isLoading.value
+                ? null
+                : () => context.push("/home/gateway-forgot-password"),
             child: Text(
-              Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh') ? "忘记密码" : "Forgot Password",
+              Localizations.localeOf(
+                    context,
+                  ).languageCode.toLowerCase().startsWith('zh')
+                  ? "忘记密码"
+                  : "Forgot Password",
             ),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: isLoading.value ? null : () => context.push("/home/gateway-register"),
+            onPressed: isLoading.value
+                ? null
+                : () {
+                    final target = safeRedirect();
+                    final registerRoute = target == null
+                        ? "/home/gateway-register"
+                        : "/home/gateway-register?redirect=${Uri.encodeComponent(target)}";
+                    context.push(registerRoute);
+                  },
             style: OutlinedButton.styleFrom(
-              backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.24)),
+              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.35),
+              side: BorderSide(
+                color: theme.colorScheme.primary.withValues(alpha: 0.24),
+              ),
             ),
             child: Text(g.createAccountButton),
           ),
@@ -143,7 +196,11 @@ class GatewayLoginPage extends HookConsumerWidget {
 }
 
 class _GatewayLoginPrimaryAction extends StatelessWidget {
-  const _GatewayLoginPrimaryAction({required this.onPressed, required this.icon, required this.label});
+  const _GatewayLoginPrimaryAction({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+  });
 
   final VoidCallback? onPressed;
   final Widget icon;
@@ -160,9 +217,15 @@ class _GatewayLoginPrimaryAction extends StatelessWidget {
             : const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF113D84), Color(0xFF2F72D4), Color(0xFF34BFD0)],
+                colors: [
+                  Color(0xFF113D84),
+                  Color(0xFF2F72D4),
+                  Color(0xFF34BFD0),
+                ],
               ),
-        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
+        color: disabled
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : null,
         boxShadow: disabled ? null : SlothShadows.card,
       ),
       child: FilledButton.icon(

@@ -12,6 +12,7 @@ import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
 import 'package:hiddify/gen/assets.gen.dart';
 import 'package:hiddify/utils/utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 class GatewayAccountPage extends HookConsumerWidget {
   const GatewayAccountPage({super.key});
@@ -65,6 +66,7 @@ class GatewayAccountPage extends HookConsumerWidget {
     final notices = useState<List<GatewayNoticeItem>>(<GatewayNoticeItem>[]);
     final errorText = useState<String?>(null);
     final loggedIn = useState(false);
+    const accountRedirect = '/gateway-account';
 
     Future<void> load() async {
       loading.value = true;
@@ -170,6 +172,70 @@ class GatewayAccountPage extends HookConsumerWidget {
       await UriUtils.tryLaunch(Uri.parse(url));
     }
 
+    String? firstNonEmpty(List<String?> values) {
+      for (final value in values) {
+        final text = value?.trim();
+        if (text != null && text.isNotEmpty) return text;
+      }
+      return null;
+    }
+
+    String? buildDownloadInviteUrl() {
+      final growth = summary.value?.growthCenter;
+      final invite = inviteSummary.value;
+      return firstNonEmpty([growth?.downloadUrl, growth?.appClaimUrl, growth?.landingUrl, invite?.inviteUrl]);
+    }
+
+    String? buildRegisterInviteUrl() {
+      final growth = summary.value?.growthCenter;
+      final invite = inviteSummary.value;
+      return firstNonEmpty([growth?.registerUrl, invite?.inviteUrl, growth?.landingUrl]);
+    }
+
+    Future<void> copyLink(String? value) async {
+      final link = value?.trim();
+      if (link == null || link.isEmpty) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(isZh ? '暂无可用链接，请先生成邀请码' : 'No link available yet.')));
+        return;
+      }
+      await Clipboard.setData(ClipboardData(text: link));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.copied)));
+    }
+
+    Future<void> shareLink({required String? value, required String scene}) async {
+      final link = value?.trim();
+      if (link == null || link.isEmpty) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(isZh ? '暂无可用链接，请先生成邀请码' : 'No link available yet.')));
+        return;
+      }
+      final inviteCode = inviteSummary.value?.inviteCode ?? summary.value?.growthCenter?.inviteCode;
+      final title = isZh ? '${Constants.appName} 邀请分享' : '${Constants.appName} Invite';
+      final buffer = StringBuffer();
+      if (isZh) {
+        buffer.writeln('我在用 ${Constants.appName}，网络很稳定。');
+        buffer.writeln('通过我的邀请$scene可自动归因返利。');
+        if (inviteCode != null && inviteCode.trim().isNotEmpty) {
+          buffer.writeln('邀请码：${inviteCode.trim()}');
+        }
+        buffer.writeln('链接：$link');
+      } else {
+        buffer.writeln('I am using ${Constants.appName}.');
+        buffer.writeln('Use my invite $scene link for referral attribution.');
+        if (inviteCode != null && inviteCode.trim().isNotEmpty) {
+          buffer.writeln('Invite code: ${inviteCode.trim()}');
+        }
+        buffer.writeln('Link: $link');
+      }
+      await Share.share(buffer.toString(), subject: title);
+    }
+
     Future<void> requestWithdraw() async {
       final invite = inviteSummary.value;
       if (invite == null || !invite.supported) {
@@ -243,6 +309,8 @@ class GatewayAccountPage extends HookConsumerWidget {
       final tg = telegramBinding.value;
       final telegramTitle = isZh ? 'Telegram机器人' : 'Telegram Bot';
       final usageRate = s.trafficTotal <= 0 ? 0.0 : (s.trafficUsed / s.trafficTotal).clamp(0.0, 1.0);
+      final downloadInviteUrl = buildDownloadInviteUrl();
+      final registerInviteUrl = buildRegisterInviteUrl();
 
       return ListView(
         padding: const EdgeInsets.all(14),
@@ -471,7 +539,21 @@ class GatewayAccountPage extends HookConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text('${g.inviteCode}: ${invite.inviteCode ?? '--'}'),
-                    Text('${g.inviteLink}: ${invite.inviteUrl ?? '--'}'),
+                    const SizedBox(height: 6),
+                    _GatewayShareLinkRow(
+                      title: isZh ? '应用下载邀请链接' : 'App download invite link',
+                      url: downloadInviteUrl,
+                      onCopy: () => copyLink(downloadInviteUrl),
+                      onShare: () => shareLink(value: downloadInviteUrl, scene: isZh ? '下载' : 'download'),
+                    ),
+                    const SizedBox(height: 6),
+                    _GatewayShareLinkRow(
+                      title: isZh ? '网站注册邀请链接' : 'Web register invite link',
+                      url: registerInviteUrl ?? invite.inviteUrl,
+                      onCopy: () => copyLink(registerInviteUrl ?? invite.inviteUrl),
+                      onShare: () =>
+                          shareLink(value: registerInviteUrl ?? invite.inviteUrl, scene: isZh ? '注册' : 'register'),
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -508,6 +590,8 @@ class GatewayAccountPage extends HookConsumerWidget {
 
     Widget serviceTab() {
       final invite = inviteSummary.value;
+      final downloadInviteUrl = buildDownloadInviteUrl();
+      final registerInviteUrl = buildRegisterInviteUrl();
       return ListView(
         padding: const EdgeInsets.all(14),
         children: [
@@ -547,20 +631,19 @@ class GatewayAccountPage extends HookConsumerWidget {
                   ] else ...[
                     Text('${g.inviteCode}: ${invite.inviteCode ?? '--'}'),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(child: Text('${g.inviteLink}: ${invite.inviteUrl ?? '--'}')),
-                        IconButton(
-                          onPressed: () async {
-                            final url = invite.inviteUrl;
-                            if (url == null || url.isEmpty) return;
-                            await Clipboard.setData(ClipboardData(text: url));
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.copied)));
-                          },
-                          icon: const Icon(Icons.copy),
-                        ),
-                      ],
+                    _GatewayShareLinkRow(
+                      title: isZh ? '应用下载邀请链接' : 'App download invite link',
+                      url: downloadInviteUrl,
+                      onCopy: () => copyLink(downloadInviteUrl),
+                      onShare: () => shareLink(value: downloadInviteUrl, scene: isZh ? '下载' : 'download'),
+                    ),
+                    const SizedBox(height: 6),
+                    _GatewayShareLinkRow(
+                      title: isZh ? '网站注册邀请链接' : 'Web register invite link',
+                      url: registerInviteUrl ?? invite.inviteUrl,
+                      onCopy: () => copyLink(registerInviteUrl ?? invite.inviteUrl),
+                      onShare: () =>
+                          shareLink(value: registerInviteUrl ?? invite.inviteUrl, scene: isZh ? '注册' : 'register'),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -698,9 +781,15 @@ class GatewayAccountPage extends HookConsumerWidget {
         children: [
           Text(g.notLoggedIn),
           const SizedBox(height: 12),
-          FilledButton(onPressed: () => context.push('/home/gateway-login'), child: Text(g.login)),
+          FilledButton(
+            onPressed: () => context.push('/home/gateway-login?redirect=${Uri.encodeComponent(accountRedirect)}'),
+            child: Text(g.login),
+          ),
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: () => context.push('/home/gateway-register'), child: Text(g.register)),
+          OutlinedButton(
+            onPressed: () => context.push('/home/gateway-register?redirect=${Uri.encodeComponent(accountRedirect)}'),
+            child: Text(g.register),
+          ),
           const SizedBox(height: 8),
           TextButton(onPressed: () => context.go('/gateway-plans'), child: Text(g.goPurchase)),
         ],
@@ -722,7 +811,7 @@ class GatewayAccountPage extends HookConsumerWidget {
           if (authExpired) ...[
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => context.push('/home/gateway-login'),
+              onPressed: () => context.push('/home/gateway-login?redirect=${Uri.encodeComponent(accountRedirect)}'),
               child: Text(isZh ? '\u91cd\u65b0\u767b\u5f55' : 'Login Again'),
             ),
             const SizedBox(height: 8),
@@ -885,6 +974,54 @@ class _GatewayOutlineActionButton extends StatelessWidget {
   }
 }
 
+class _GatewayShareLinkRow extends StatelessWidget {
+  const _GatewayShareLinkRow({required this.title, required this.url, required this.onCopy, required this.onShare});
+
+  final String title;
+  final String? url;
+  final VoidCallback onCopy;
+  final VoidCallback onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          SelectableText(url ?? '--', style: theme.textTheme.bodySmall),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onCopy,
+                icon: const Icon(Icons.copy_rounded),
+                label: Text(isZh ? '复制' : 'Copy'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: onShare,
+                icon: const Icon(Icons.ios_share_rounded),
+                label: Text(isZh ? '分享' : 'Share'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class GatewayInvitePage extends HookConsumerWidget {
   const GatewayInvitePage({super.key});
 
@@ -902,6 +1039,7 @@ class GatewayInvitePage extends HookConsumerWidget {
     final theme = Theme.of(context);
     final loading = useState(true);
     final invite = useState<GatewayInviteSummary?>(null);
+    final growthCenter = useState<GatewayGrowthCenterSummary?>(null);
     final error = useState<String?>(null);
 
     Future<void> load() async {
@@ -909,6 +1047,12 @@ class GatewayInvitePage extends HookConsumerWidget {
       error.value = null;
       try {
         invite.value = await ref.read(slothGatewayPortalControllerProvider).fetchInviteSummary();
+        try {
+          growthCenter.value =
+              (await ref.read(slothGatewayPortalControllerProvider).fetchAccountSummary())?.growthCenter;
+        } catch (_) {
+          growthCenter.value = null;
+        }
       } on GatewayApiException catch (e) {
         error.value = e.message;
       } catch (_) {
@@ -930,6 +1074,24 @@ class GatewayInvitePage extends HookConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(g.copied)));
     }
 
+    String? firstNonEmpty(List<String?> values) {
+      for (final value in values) {
+        final text = value?.trim();
+        if (text != null && text.isNotEmpty) return text;
+      }
+      return null;
+    }
+
+    Future<void> shareText(String? value, String scene) async {
+      final link = value?.trim();
+      if (link == null || link.isEmpty) return;
+      final title = isZh ? '${Constants.appName} 邀请分享' : '${Constants.appName} Invite';
+      await Share.share(
+        isZh ? '通过我的邀请$scene链接体验 ${Constants.appName}：$link' : 'Join ${Constants.appName} with my $scene link: $link',
+        subject: title,
+      );
+    }
+
     Widget body;
     if (loading.value) {
       body = const Center(child: CircularProgressIndicator());
@@ -944,6 +1106,17 @@ class GatewayInvitePage extends HookConsumerWidget {
       );
     } else {
       final i = invite.value!;
+      final downloadInviteUrl = firstNonEmpty([
+        growthCenter.value?.downloadUrl,
+        growthCenter.value?.appClaimUrl,
+        growthCenter.value?.landingUrl,
+        i.inviteUrl,
+      ]);
+      final registerInviteUrl = firstNonEmpty([
+        growthCenter.value?.registerUrl,
+        i.inviteUrl,
+        growthCenter.value?.landingUrl,
+      ]);
       body = ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -955,11 +1128,18 @@ class GatewayInvitePage extends HookConsumerWidget {
                 children: [
                   Text('${g.inviteCode}: ${i.inviteCode ?? '--'}'),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(child: Text('${g.inviteLink}: ${i.inviteUrl ?? '--'}')),
-                      IconButton(onPressed: () => copyText(i.inviteUrl), icon: const Icon(Icons.copy)),
-                    ],
+                  _GatewayShareLinkRow(
+                    title: isZh ? '应用下载邀请链接' : 'App download invite link',
+                    url: downloadInviteUrl,
+                    onCopy: () => copyText(downloadInviteUrl),
+                    onShare: () => shareText(downloadInviteUrl, isZh ? '下载' : 'download'),
+                  ),
+                  const SizedBox(height: 6),
+                  _GatewayShareLinkRow(
+                    title: isZh ? '网站注册邀请链接' : 'Web register invite link',
+                    url: registerInviteUrl,
+                    onCopy: () => copyText(registerInviteUrl),
+                    onShare: () => shareText(registerInviteUrl, isZh ? '注册' : 'register'),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
