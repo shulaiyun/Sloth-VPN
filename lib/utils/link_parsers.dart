@@ -21,7 +21,7 @@ abstract class LinkParser {
   }
 
   // protocols schemas
-  static const protocols = ['hiddify', 'v2ray', 'v2rayn', 'v2rayng', 'clash', 'clashmeta', 'sing-box'];
+  static const protocols = ['slothvpn', 'hiddify', 'v2ray', 'v2rayn', 'v2rayng', 'clash', 'clashmeta', 'sing-box'];
 
   static ProfileLink? parse(String link) {
     return simple(link) ?? deep(link);
@@ -38,6 +38,15 @@ abstract class LinkParser {
     if (uri == null || !uri.hasScheme || !uri.hasAuthority) return null;
     final queryParams = uri.queryParameters;
     switch (uri.scheme) {
+      case 'slothvpn':
+        if (queryParams.containsKey('url')) {
+          return (url: queryParams['url']!, name: queryParams['name'] ?? '');
+        }
+        if (uri.host == 'import' && uri.pathSegments.isNotEmpty) {
+          final raw = Uri.decodeComponent(uri.pathSegments.join('/'));
+          return (url: raw, name: queryParams['name'] ?? uri.fragment);
+        }
+        return null;
       case 'hiddify':
         if (queryParams.containsKey('url')) {
           return (url: queryParams['url']!, name: queryParams['name'] ?? '');
