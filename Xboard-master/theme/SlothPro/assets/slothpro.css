@@ -855,8 +855,8 @@ p {
 
 .assistant-widget {
   position: fixed;
-  right: 20px;
-  bottom: 22px;
+  right: 18px;
+  bottom: 20px;
   z-index: 44;
   width: auto;
   display: flex;
@@ -869,12 +869,13 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-width: 56px;
-  height: 56px;
+  gap: 0;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
   border: 1px solid rgba(66,245,191,.35);
   border-radius: 999px;
-  padding: 0 14px;
+  padding: 0;
   color: #f2fbff;
   background: linear-gradient(135deg, rgba(15, 77, 155, 0.96), rgba(21, 169, 232, 0.92));
   box-shadow: 0 16px 36px rgba(5, 22, 44, 0.36);
@@ -885,26 +886,27 @@ p {
 
 .assistant-widget.dragging .assistant-trigger {
   cursor: grabbing;
+  box-shadow: 0 10px 28px rgba(5, 22, 44, 0.42);
 }
 
 .assistant-trigger-icon {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   background: rgba(255,255,255,.16);
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: .04em;
 }
 
 .assistant-trigger-text {
-  font-size: 13px;
+  display: none;
 }
 
 .assistant-panel {
   display: none;
-  width: min(340px, calc(100vw - 26px));
+  width: min(340px, calc(100vw - 18px));
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 20px;
   padding: 16px;
@@ -1039,6 +1041,13 @@ p {
 
 .assistant-widget.open .assistant-panel {
   display: block;
+}
+
+.plan-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
 }
 
 .auth-wrap,
@@ -1613,13 +1622,10 @@ p {
   }
 
   .assistant-trigger {
-    min-width: 52px;
     height: 52px;
-    padding: 0 12px;
-  }
-
-  .assistant-trigger-text {
-    display: none;
+    width: 52px;
+    min-width: 52px;
+    padding: 0;
   }
 
   .assistant-panel {

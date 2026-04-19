@@ -39,11 +39,25 @@ class GatewayPlansPage extends HookConsumerWidget {
         .replaceAll(RegExp('<[^>]*>'), ' ')
         .replaceAll(RegExp(r'\[(.*?)\]\((.*?)\)'), '\$1')
         .replaceAll(RegExp('[*_`~#]+'), ' ')
+        .replaceAll(RegExp('[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     if (cleaned.isEmpty) return "";
     if (cleaned.length <= limit) return cleaned;
     return '${cleaned.substring(0, limit)}...';
+  }
+
+  String _compactSummary(String raw, {int limit = 180}) {
+    final normalized = _sanitizeSummary(raw, limit: 600);
+    if (normalized.isEmpty) return "";
+    final segments = normalized
+        .split(RegExp('[。！？!?；;]'))
+        .map((item) => item.trim())
+        .where((item) => item.length >= 4)
+        .toList();
+    if (segments.isEmpty) return _sanitizeSummary(normalized, limit: limit);
+    final compact = segments.take(3).join(' · ');
+    return _sanitizeSummary(compact, limit: limit);
   }
 
   @override
@@ -1069,7 +1083,7 @@ class GatewayPlansPage extends HookConsumerWidget {
               (item) => item.code == periodCode,
               orElse: () => GatewayPlanPeriod(code: periodCode, label: periodCode, price: 0),
             );
-            final summaryText = _sanitizeSummary(plan.displaySummary ?? plan.description);
+            final summaryText = _compactSummary(plan.displaySummary ?? plan.description);
             final highlights = plan.displayHighlights.isNotEmpty
                 ? plan.displayHighlights
                 : <String>[
@@ -1103,8 +1117,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if ((plan.displayBadge ?? "").isNotEmpty)
-                          Chip(label: Text(plan.displayBadge!.trim())),
+                        if ((plan.displayBadge ?? "").isNotEmpty) Chip(label: Text(plan.displayBadge!.trim())),
                         if (!plan.sell) Chip(label: Text(isZh ? '暂停售卖' : 'Unavailable')),
                       ],
                     ),
@@ -1119,11 +1132,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                       ),
                     ],
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 6,
-                      children: highlights.map((item) => _TagText(text: item)).toList(),
-                    ),
+                    Wrap(spacing: 10, runSpacing: 6, children: highlights.map((item) => _TagText(text: item)).toList()),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       key: ValueKey('period-${plan.id}-${selectedPeriods.value[plan.id]}'),

@@ -15,7 +15,6 @@ import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
 import 'package:hiddify/features/app_gateway/widget/gateway_assistant_fab.dart';
 import 'package:hiddify/features/home/widget/connection_button.dart';
 import 'package:hiddify/features/per_app_proxy/model/per_app_proxy_mode.dart';
-import 'package:hiddify/features/profile/model/profile_entity.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
 import 'package:hiddify/features/profile/widget/profile_tile.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
@@ -376,9 +375,8 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
     final g = GatewayL10n.of(context);
     final theme = Theme.of(context);
     final activeProfile = ref.watch(activeProfileProvider).valueOrNull;
-    final remoteProfile = activeProfile is RemoteProfileEntity ? activeProfile : null;
-    if (remoteProfile != null) {
-      return ProfileTile(profile: remoteProfile, isMain: true);
+    if (activeProfile != null) {
+      return ProfileTile(profile: activeProfile, isMain: true);
     }
     final summaryTraffic = _summary?.trafficRemaining ?? 0;
     final summaryExpire = _formatIsoDate(_summary?.expiredAt);

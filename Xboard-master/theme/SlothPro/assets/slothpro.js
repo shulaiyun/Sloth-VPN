@@ -755,10 +755,22 @@
     return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
   }
 
+  function compactPlanSummary(raw, maxSegments = 3, limit = 180) {
+    const cleaned = cleanPlanDescription(raw, 560);
+    if (!cleaned) return "";
+    const segments = cleaned
+      .split(/[。！？!?；;]+/g)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 4)
+      .slice(0, maxSegments);
+    if (!segments.length) return cleanPlanDescription(cleaned, limit);
+    return cleanPlanDescription(segments.join(" · "), limit);
+  }
+
   function resolvePlanSummary(plan, limit = 180) {
-    const displaySummary = cleanPlanDescription(plan?.display_summary || "", limit);
+    const displaySummary = compactPlanSummary(plan?.display_summary || "", 4, Math.max(limit, 220));
     if (displaySummary) return displaySummary;
-    return cleanPlanDescription(plan?.content || "", limit);
+    return compactPlanSummary(plan?.content || "", 3, limit);
   }
 
   function resolvePlanHighlights(plan) {
@@ -1239,7 +1251,7 @@
   }
 
   function renderAssistantWidget() {
-    const shortLabel = state.locale.startsWith("zh") ? "助手" : "AI";
+    const shortLabel = "AI";
     assistantHistory();
     return `
       <div class="assistant-widget" data-assistant>
@@ -1272,88 +1284,134 @@
     const handle = wrapper.querySelector("[data-assistant-handle]");
     if (!handle) return;
     const saved = safeJson(localStorage.getItem(assistantPosStorageKey), null);
-    if (saved && Number.isFinite(saved.right) && Number.isFinite(saved.bottom)) {
-      wrapper.style.right = `${saved.right}px`;
-      wrapper.style.bottom = `${saved.bottom}px`;
-      wrapper.style.left = "auto";
-      wrapper.style.top = "auto";
-    }
+    const snapMargin = 12;
+    const minBottom = 14;
+    const longPressDelayMs = 180;
+    const moveThreshold = 8;
     let pointerId = null;
     let startX = 0;
     let startY = 0;
     let originRight = 0;
     let originBottom = 0;
     let dragging = false;
+    let longPressReady = false;
+    let pressTimer = null;
+
+    function clampPosition(right, bottom) {
+      const triggerRect = handle.getBoundingClientRect();
+      const maxRight = Math.max(snapMargin, window.innerWidth - triggerRect.width - snapMargin);
+      const maxBottom = Math.max(minBottom, window.innerHeight - triggerRect.height - minBottom);
+      return {
+        right: Math.max(snapMargin, Math.min(maxRight, Number(right) || snapMargin)),
+        bottom: Math.max(minBottom, Math.min(maxBottom, Number(bottom) || minBottom)),
+      };
+    }
+
+    function applyPosition(right, bottom) {
+      const clamped = clampPosition(right, bottom);
+      wrapper.style.right = `${clamped.right}px`;
+      wrapper.style.bottom = `${clamped.bottom}px`;
+      wrapper.style.left = "auto";
+      wrapper.style.top = "auto";
+      return clamped;
+    }
 
     function persistPosition() {
       const rect = wrapper.getBoundingClientRect();
       const right = Math.round(window.innerWidth - rect.right);
       const bottom = Math.round(window.innerHeight - rect.bottom);
-      localStorage.setItem(assistantPosStorageKey, JSON.stringify({ right, bottom }));
+      const clamped = clampPosition(right, bottom);
+      localStorage.setItem(assistantPosStorageKey, JSON.stringify(clamped));
     }
 
-    function finalize(event) {
-      if (pointerId === null || event.pointerId !== pointerId) return;
-      if (handle.hasPointerCapture(pointerId)) {
-        handle.releasePointerCapture(pointerId);
+    function clearPressTimer() {
+      if (pressTimer) {
+        window.clearTimeout(pressTimer);
+        pressTimer = null;
       }
-      const wasDragging = dragging;
-      pointerId = null;
-      dragging = false;
-      wrapper.classList.remove("dragging");
-      if (wasDragging) {
+    }
+
+    function markJustDragged() {
+      wrapper.dataset.justDragged = "1";
+      window.setTimeout(() => {
+        wrapper.dataset.justDragged = "0";
+      }, 260);
+    }
+
+    function finalizeDrag(withSnap) {
+      clearPressTimer();
+      if (withSnap) {
         const rect = wrapper.getBoundingClientRect();
         const leftDistance = rect.left;
         const rightDistance = window.innerWidth - rect.right;
-        const maxRight = Math.max(12, window.innerWidth - rect.width - 12);
-        const snapRight = rightDistance <= leftDistance ? 12 : maxRight;
-        const maxBottom = Math.max(12, window.innerHeight - rect.height - 12);
-        const snapBottom = Math.max(12, Math.min(maxBottom, window.innerHeight - rect.bottom));
-        wrapper.style.right = `${snapRight}px`;
-        wrapper.style.bottom = `${snapBottom}px`;
-        wrapper.style.left = "auto";
-        wrapper.style.top = "auto";
-        wrapper.dataset.justDragged = "1";
-        window.setTimeout(() => {
-          wrapper.dataset.justDragged = "0";
-        }, 220);
+        const triggerRect = handle.getBoundingClientRect();
+        const farRight = Math.max(snapMargin, window.innerWidth - triggerRect.width - snapMargin);
+        const targetRight = rightDistance <= leftDistance ? snapMargin : farRight;
+        applyPosition(targetRight, window.innerHeight - rect.bottom);
+        markJustDragged();
       }
+      dragging = false;
+      longPressReady = false;
+      wrapper.classList.remove("dragging");
       persistPosition();
+    }
+
+    if (saved && Number.isFinite(saved.right) && Number.isFinite(saved.bottom)) {
+      applyPosition(saved.right, saved.bottom);
+    } else {
+      applyPosition(parseFloat(wrapper.style.right || "20"), parseFloat(wrapper.style.bottom || "22"));
     }
 
     handle.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       pointerId = event.pointerId;
       dragging = false;
+      longPressReady = false;
       startX = event.clientX;
       startY = event.clientY;
       const rect = wrapper.getBoundingClientRect();
       originRight = window.innerWidth - rect.right;
       originBottom = window.innerHeight - rect.bottom;
-      handle.setPointerCapture(pointerId);
+      if (handle.setPointerCapture) handle.setPointerCapture(pointerId);
+      clearPressTimer();
+      pressTimer = window.setTimeout(() => {
+        if (pointerId !== event.pointerId) return;
+        longPressReady = true;
+        dragging = true;
+        wrapper.classList.add("dragging");
+      }, longPressDelayMs);
     });
 
     handle.addEventListener("pointermove", (event) => {
       if (pointerId === null || event.pointerId !== pointerId) return;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
-      if (!dragging && Math.abs(dx) + Math.abs(dy) >= 9) {
-        dragging = true;
-        wrapper.classList.add("dragging");
+      if (!longPressReady && Math.abs(dx) + Math.abs(dy) > moveThreshold) {
+        clearPressTimer();
       }
       if (!dragging) return;
-      const maxRight = Math.max(12, window.innerWidth - 56);
-      const maxBottom = Math.max(12, window.innerHeight - 56);
-      const nextRight = Math.max(12, Math.min(maxRight, originRight - dx));
-      const nextBottom = Math.max(12, Math.min(maxBottom, originBottom - dy));
-      wrapper.style.right = `${nextRight}px`;
-      wrapper.style.bottom = `${nextBottom}px`;
-      wrapper.style.left = "auto";
-      wrapper.style.top = "auto";
+      event.preventDefault();
+      applyPosition(originRight - dx, originBottom - dy);
     });
 
-    handle.addEventListener("pointerup", finalize);
-    handle.addEventListener("pointercancel", finalize);
+    function finishPointer(event) {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      clearPressTimer();
+      const shouldSnap = dragging || longPressReady;
+      if (handle.hasPointerCapture && handle.hasPointerCapture(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
+      pointerId = null;
+      finalizeDrag(shouldSnap);
+    }
+
+    handle.addEventListener("pointerup", finishPointer);
+    handle.addEventListener("pointercancel", finishPointer);
+    window.addEventListener("resize", () => {
+      const rect = wrapper.getBoundingClientRect();
+      applyPosition(window.innerWidth - rect.right, window.innerHeight - rect.bottom);
+      persistPosition();
+    });
   }
 
   function navigate(path) {
@@ -1713,7 +1771,7 @@
             <h3>${esc(plan.name)}</h3>
             <div class="price"><strong>${price.value ? esc(formatMoney(price.value)) : "-"}</strong><span>${esc(priceLabel)}</span></div>
             ${resetPack && price.key !== "reset_price" ? `<div class="tag reset-pack">${esc(t("resetPackTag"))} · ${esc(formatMoney(resetPack.value))}</div>` : ""}
-            ${planDescription ? `<p class="section-desc">${esc(planDescription)}</p>` : ""}
+            ${planDescription ? `<p class="section-desc plan-summary">${esc(planDescription)}</p>` : ""}
           </div>
           <ul class="plan-list">
             <li>${esc(t("traffic"))}: ${esc(formatBytes(Number(plan.transfer_enable || 0) * 1024 * 1024 * 1024))}</li>
