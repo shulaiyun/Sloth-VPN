@@ -1596,13 +1596,14 @@
       ["/pricing", t("navPricing")],
       ["/download", t("navDownload")],
       ["/support", t("navSupport")],
+      [consoleHref, t("navPortal"), "console-nav-entry"],
     ].map(([path, label, extraClass = ""]) => {
       const isActive = active === path || (String(path).startsWith("/portal") && active === "/portal");
       const classes = [isActive ? "active" : "", extraClass].filter(Boolean).join(" ");
       return `<a href="${path}" data-nav="${path}" class="${classes}">${esc(label)}</a>`;
     }).join("");
     const accountLinks = loggedIn
-      ? `<button class="btn" data-action="logout">${esc(t("logout"))}</button>`
+      ? `<a class="btn primary" href="${esc(consoleHref)}" data-nav="${esc(consoleHref)}">${esc(t("navPortal"))}</a><button class="btn" data-action="logout">${esc(t("logout"))}</button>`
       : `<a class="btn ghost" href="/auth/login" data-nav="/auth/login">${esc(t("navLogin"))}</a><a class="btn primary" href="/auth/register" data-nav="/auth/register">${esc(t("navRegister"))}</a>`;
     const dockSecondaryHref = featureFlags.operator_console_enabled && context.operator_path
       ? context.operator_path
