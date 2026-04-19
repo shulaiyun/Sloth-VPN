@@ -14,6 +14,8 @@ class SlothGatewaySessionStore {
   static const _managedProfileIdKey = "sloth_gateway.managed_profile_id";
   static const _lastBindIdKey = "sloth_gateway.last_bind_id";
   static const _lastBindDeviceIdKey = "sloth_gateway.last_bind_device_id";
+  static const _referralClaimIdKey = "sloth_gateway.referral_claim_id";
+  static const _pendingInviteCodeKey = "sloth_gateway.pending_invite_code";
 
   String? readAccessToken() => _preferences.getString(_accessTokenKey);
   String? readRefreshToken() => _preferences.getString(_refreshTokenKey);
@@ -22,6 +24,8 @@ class SlothGatewaySessionStore {
   String? readManagedProfileId() => _preferences.getString(_managedProfileIdKey);
   String? readLastBindId() => _preferences.getString(_lastBindIdKey);
   String? readLastBindDeviceId() => _preferences.getString(_lastBindDeviceIdKey);
+  String? readReferralClaimId() => _preferences.getString(_referralClaimIdKey);
+  String? readPendingInviteCode() => _preferences.getString(_pendingInviteCodeKey);
 
   Future<void> saveAuth({required String accessToken, required String refreshToken, required String sessionId}) async {
     await _preferences.setString(_accessTokenKey, accessToken);
@@ -31,6 +35,10 @@ class SlothGatewaySessionStore {
 
   Future<void> saveManagedPullUrl(String url) => _preferences.setString(_managedPullUrlKey, url);
   Future<void> saveManagedProfileId(String id) => _preferences.setString(_managedProfileIdKey, id);
+  Future<void> saveReferralClaimId(String claimId) => _preferences.setString(_referralClaimIdKey, claimId);
+  Future<void> savePendingInviteCode(String inviteCode) => _preferences.setString(_pendingInviteCodeKey, inviteCode);
+  Future<void> clearReferralClaimId() => _preferences.remove(_referralClaimIdKey);
+  Future<void> clearPendingInviteCode() => _preferences.remove(_pendingInviteCodeKey);
 
   Future<void> clearAuth() async {
     await _preferences.remove(_accessTokenKey);
