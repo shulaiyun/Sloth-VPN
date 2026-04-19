@@ -9,6 +9,7 @@ import 'package:hiddify/features/app_gateway/model/gateway_l10n.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_portal_controller.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
+import 'package:hiddify/features/app_gateway/widget/gateway_assistant_fab.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,6 +34,18 @@ class GatewayPlansPage extends HookConsumerWidget {
     return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
   }
 
+  String _sanitizeSummary(String raw, {int limit = 130}) {
+    final cleaned = raw
+        .replaceAll(RegExp('<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\[(.*?)\]\((.*?)\)'), '\$1')
+        .replaceAll(RegExp('[*_`~#]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (cleaned.isEmpty) return "";
+    if (cleaned.length <= limit) return cleaned;
+    return '${cleaned.substring(0, limit)}...';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = GatewayL10n.of(context);
@@ -54,23 +67,8 @@ class GatewayPlansPage extends HookConsumerWidget {
     final orderStatusFilter = useState<String>('all');
     final tabIndex = useState<int>(0);
     final errorText = useState<String?>(null);
-    final couponTextController = useTextEditingController();
-    final giftCardTextController = useTextEditingController();
-    final promoBusy = useState(false);
-    final giftHistoryLoading = useState(false);
-    final couponPreviewText = useState<String?>(null);
-    final giftCardPreviewText = useState<String?>(null);
-    final giftCardHistory = useState<List<GatewayGiftCardHistoryItem>>([]);
-    final promoUsageOrders = useState<List<GatewayOrderItem>>([]);
-    final couponCheckedSignature = useState<String?>(null);
-    final couponCheckedDiscount = useState<int>(0);
-    final couponCheckedCode = useState<String?>(null);
     final notices = useState<List<GatewayNoticeItem>>([]);
     final noticesLoading = useState(false);
-    final usageExpanded = useState(false);
-
-    useListenable(couponTextController);
-    useListenable(giftCardTextController);
 
     void showTip(String message, {Duration duration = const Duration(seconds: 6)}) {
       final messenger = ScaffoldMessenger.of(context);
@@ -139,22 +137,12 @@ class GatewayPlansPage extends HookConsumerWidget {
       return value.isEmpty ? null : value;
     }
 
-    String couponSignature({required int planId, required String period, required String code}) {
-      return '$planId|$period|${code.trim().toLowerCase()}';
-    }
-
     int clampDiscount(int expected, int amount) {
       if (expected <= 0 || amount <= 0) return 0;
       return amount > expected ? expected : amount;
     }
 
-    ({
-      int original,
-      int coupon,
-      int balance,
-      int oldPlanOffset,
-      int finalPay,
-    }) buildPricePreview({
+    ({int original, int coupon, int balance, int oldPlanOffset, int finalPay}) buildPricePreview({
       required int original,
       required int couponDiscount,
       required int balanceAvailable,
@@ -175,23 +163,6 @@ class GatewayPlansPage extends HookConsumerWidget {
       );
     }
 
-    Future<void> loadGiftCardHistory() async {
-      if (!loggedIn.value) {
-        giftCardHistory.value = const [];
-        return;
-      }
-      giftHistoryLoading.value = true;
-      try {
-        final portal = ref.read(slothGatewayPortalControllerProvider);
-        final history = await portal.fetchGiftCardHistory();
-        giftCardHistory.value = history.take(6).toList();
-      } on GatewayApiException {
-        giftCardHistory.value = const [];
-      } finally {
-        giftHistoryLoading.value = false;
-      }
-    }
-
     Future<void> load() async {
       loading.value = true;
       errorText.value = null;
@@ -204,12 +175,6 @@ class GatewayPlansPage extends HookConsumerWidget {
           orders.value = const [];
           summary.value = null;
           notices.value = const [];
-          giftCardHistory.value = const [];
-          promoUsageOrders.value = const [];
-          couponCheckedSignature.value = null;
-          couponCheckedDiscount.value = 0;
-          couponCheckedCode.value = null;
-          usageExpanded.value = false;
           return;
         }
 
@@ -217,20 +182,11 @@ class GatewayPlansPage extends HookConsumerWidget {
         final loadedPlans = await portal.fetchPlans();
         final loadedMethods = await portal.fetchPaymentMethods();
         final loadedOrders = await portal.fetchOrders(status: orderStatusFilter.value);
-        final loadedAllOrders = orderStatusFilter.value == 'all'
-            ? loadedOrders
-            : await portal.fetchOrders(status: 'all');
 
         summary.value = loadedSummary;
         plans.value = loadedPlans;
         methods.value = loadedMethods;
         orders.value = loadedOrders;
-        promoUsageOrders.value = [...loadedAllOrders]
-          ..sort((a, b) {
-            final ad = DateTime.tryParse(a.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            final bd = DateTime.tryParse(b.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            return bd.compareTo(ad);
-          });
 
         if (selectedMethodId.value == null && loadedMethods.isNotEmpty) {
           selectedMethodId.value = loadedMethods.first.id;
@@ -251,8 +207,6 @@ class GatewayPlansPage extends HookConsumerWidget {
         } finally {
           noticesLoading.value = false;
         }
-        usageExpanded.value = false;
-        await loadGiftCardHistory();
       } on GatewayApiException catch (error) {
         errorText.value = error.message;
       } catch (_) {
@@ -549,7 +503,8 @@ class GatewayPlansPage extends HookConsumerWidget {
         if (order.canCancel) {
           await portal.cancelOrder(order.orderNo);
         }
-        final rebuiltOrderNo = await portal.createOrder(planId: planId, period: period);
+        final created = await portal.createOrder(planId: planId, period: period);
+        final rebuiltOrderNo = created.orderNo;
         if (rebuiltOrderNo.isEmpty) {
           throw GatewayApiException(message: g.unknownError);
         }
@@ -586,14 +541,7 @@ class GatewayPlansPage extends HookConsumerWidget {
     Future<bool> confirmBeforeBuy(
       GatewayPlan plan,
       String period, {
-      required ({
-        int original,
-        int coupon,
-        int balance,
-        int oldPlanOffset,
-        int finalPay,
-      })
-      preview,
+      required ({int original, int coupon, int balance, int oldPlanOffset, int finalPay}) preview,
     }) async {
       final currentPlan = summary.value?.planName?.trim();
       final isRenew = currentPlan != null && currentPlan.isNotEmpty && currentPlan == plan.name.trim();
@@ -649,7 +597,10 @@ class GatewayPlansPage extends HookConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(isZh ? '套餐信息' : 'Plan info', style: dialogTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      isZh ? '套餐信息' : 'Plan info',
+                      style: dialogTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 8),
                     kv(isZh ? '当前套餐' : 'Current plan', currentPlan == null || currentPlan.isEmpty ? '--' : currentPlan),
                     kv(isZh ? '目标套餐' : 'Target plan', plan.name),
@@ -658,7 +609,10 @@ class GatewayPlansPage extends HookConsumerWidget {
                     const SizedBox(height: 8),
                     const Divider(height: 1),
                     const SizedBox(height: 10),
-                    Text(isZh ? '下单前金额预览' : 'Pre-order preview', style: dialogTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      isZh ? '下单前金额预览' : 'Pre-order preview',
+                      style: dialogTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
@@ -671,8 +625,18 @@ class GatewayPlansPage extends HookConsumerWidget {
                       child: Column(
                         children: [
                           kv(isZh ? '原价' : 'Original', originalText),
-                          kv(isZh ? '总抵扣' : 'Total discount', totalDiscountText, strong: true, valueColor: SlothPalette.success),
-                          kv(isZh ? '最终实付' : 'Final payable', finalPayText, strong: true, valueColor: dialogTheme.colorScheme.primary),
+                          kv(
+                            isZh ? '总抵扣' : 'Total discount',
+                            totalDiscountText,
+                            strong: true,
+                            valueColor: SlothPalette.success,
+                          ),
+                          kv(
+                            isZh ? '最终实付' : 'Final payable',
+                            finalPayText,
+                            strong: true,
+                            valueColor: dialogTheme.colorScheme.primary,
+                          ),
                         ],
                       ),
                     ),
@@ -719,96 +683,132 @@ class GatewayPlansPage extends HookConsumerWidget {
       return result == true;
     }
 
-    Future<String?> resolveCouponCodeForBuy({required int planId, required String period}) async {
-      final code = couponTextController.text.trim();
-      if (code.isEmpty) {
-        couponCheckedSignature.value = null;
-        couponCheckedDiscount.value = 0;
-        couponCheckedCode.value = null;
+    Future<({int methodId, String couponCode})?> openCheckoutSetup({
+      required GatewayPlan plan,
+      required GatewayPlanPeriod selectedPeriod,
+    }) async {
+      final paymentMethods = methods.value;
+      if (paymentMethods.isEmpty) {
+        showTip(isZh ? '暂无可用支付方式，请联系管理员配置支付通道' : 'No payment method is available right now');
         return null;
       }
-      final signature = couponSignature(planId: planId, period: period, code: code);
-      if (couponCheckedSignature.value == signature && couponCheckedCode.value == code) return code;
-      promoBusy.value = true;
+      int methodId = selectedMethodId.value ?? paymentMethods.first.id;
+      final couponController = TextEditingController();
+      final periodLabel = g.periodLabel(selectedPeriod.code, selectedPeriod.label);
       try {
-        final portal = ref.read(slothGatewayPortalControllerProvider);
-        final result = await portal.checkCoupon(code: code, planId: planId, period: period);
-        if (!result.valid) {
-          throw GatewayApiException(message: isZh ? '优惠券不可用，请更换后重试' : 'Coupon is not available');
-        }
-        final discountValue = result.discountAmount > 0 ? result.discountAmount : result.value;
-        final discountText = _presentPrice(discountValue);
-        couponCheckedSignature.value = signature;
-        couponCheckedDiscount.value = discountValue;
-        couponCheckedCode.value = code;
-        couponPreviewText.value = isZh ? '优惠券可用，预计减免 $discountText' : 'Coupon valid, estimated discount $discountText';
-        return code;
-      } on GatewayApiException catch (error) {
-        couponPreviewText.value = null;
-        couponCheckedSignature.value = null;
-        couponCheckedDiscount.value = 0;
-        couponCheckedCode.value = null;
-        if (!context.mounted) return null;
-        showTip(error.message, duration: const Duration(seconds: 8));
-        rethrow;
-      } finally {
-        promoBusy.value = false;
-      }
-    }
-
-    Future<void> previewGiftCard() async {
-      final code = giftCardTextController.text.trim();
-      if (code.isEmpty) {
-        showTip(isZh ? '请输入礼品卡/兑换码' : 'Please enter gift card code');
-        return;
-      }
-      promoBusy.value = true;
-      try {
-        final portal = ref.read(slothGatewayPortalControllerProvider);
-        final result = await portal.checkGiftCard(code);
-        giftCardPreviewText.value = result.canRedeem
-            ? (isZh ? '礼品卡可兑换，点击“立即兑换”即可到账' : 'Gift card is redeemable now')
-            : (result.reason ?? (isZh ? '礼品卡暂不可兑换' : 'Gift card cannot be redeemed now'));
-      } on GatewayApiException catch (error) {
-        giftCardPreviewText.value = error.message;
-      } finally {
-        promoBusy.value = false;
-      }
-    }
-
-    Future<void> redeemGiftCard() async {
-      final code = giftCardTextController.text.trim();
-      if (code.isEmpty) {
-        showTip(isZh ? '请输入礼品卡/兑换码' : 'Please enter gift card code');
-        return;
-      }
-      promoBusy.value = true;
-      try {
-        final portal = ref.read(slothGatewayPortalControllerProvider);
-        final result = await portal.redeemGiftCard(code);
-        if (!context.mounted) return;
-        showTip(
-          result.redeemed
-              ? (isZh ? '礼品卡兑换成功，账户余额已更新' : 'Gift card redeemed and balance updated')
-              : (isZh ? '礼品卡兑换未成功，请稍后重试' : 'Gift card redeem failed'),
-          duration: const Duration(seconds: 8),
+        return await showModalBottomSheet<({int methodId, String couponCode})>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (sheetContext) {
+            return StatefulBuilder(
+              builder: (sheetContext, setSheetState) {
+                final insetBottom = MediaQuery.viewInsetsOf(sheetContext).bottom;
+                return SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + insetBottom),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isZh ? '确认下单与支付' : 'Confirm checkout',
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${plan.name} · $periodLabel · ${_presentPrice(selectedPeriod.price)}',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          initialValue: methodId,
+                          decoration: InputDecoration(
+                            labelText: g.paymentMethod,
+                            prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
+                            border: const OutlineInputBorder(),
+                          ),
+                          items: paymentMethods
+                              .map((m) => DropdownMenuItem(value: m.id, child: Text('${m.icon} ${m.name}')))
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setSheetState(() => methodId = value);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: couponController,
+                          textInputAction: TextInputAction.done,
+                          decoration: InputDecoration(
+                            labelText: isZh ? '优惠券代码（可选）' : 'Coupon code (optional)',
+                            prefixIcon: const Icon(Icons.local_offer_outlined),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(sheetContext),
+                                child: Text(isZh ? '取消' : 'Cancel'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _GatewayPrimaryActionButton(
+                                onPressed: () {
+                                  Navigator.pop(sheetContext, (
+                                    methodId: methodId,
+                                    couponCode: couponController.text.trim(),
+                                  ));
+                                },
+                                icon: const Icon(Icons.payments_rounded, size: 18),
+                                label: isZh ? '创建订单并支付' : 'Create order & pay',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         );
-        giftCardPreviewText.value = null;
-        giftCardTextController.clear();
-        await load();
-      } on GatewayApiException catch (error) {
-        if (!context.mounted) return;
-        showTip(error.message, duration: const Duration(seconds: 8));
       } finally {
-        promoBusy.value = false;
+        couponController.dispose();
       }
+    }
+
+    Future<({String? couponCode, int discount})> resolveCouponForBuy({
+      required int planId,
+      required String period,
+      required String rawCouponCode,
+    }) async {
+      final code = rawCouponCode.trim();
+      if (code.isEmpty) return (couponCode: null, discount: 0);
+      final portal = ref.read(slothGatewayPortalControllerProvider);
+      final result = await portal.checkCoupon(code: code, planId: planId, period: period);
+      if (!result.valid) {
+        throw GatewayApiException(message: isZh ? '优惠券不可用，请更换后重试' : 'Coupon is not available');
+      }
+      final discountValue = result.discountAmount > 0 ? result.discountAmount : result.value;
+      showTip(
+        isZh
+            ? '优惠券可用，预计减免 ${_presentPrice(discountValue)}'
+            : 'Coupon is valid. Estimated discount ${_presentPrice(discountValue)}',
+      );
+      return (couponCode: code, discount: discountValue);
     }
 
     Future<void> buy(GatewayPlan plan) async {
-      final methodId = selectedMethodId.value;
       final period = selectedPeriods.value[plan.id];
-      if (methodId == null || period == null || period.isEmpty) {
-        showTip(g.selectPeriodAndPayment);
+      if (period == null || period.isEmpty) {
+        showTip(isZh ? '请先选择购买周期' : 'Please select a billing period');
         return;
       }
       try {
@@ -816,14 +816,14 @@ class GatewayPlansPage extends HookConsumerWidget {
           (item) => item.code == period,
           orElse: () => GatewayPlanPeriod(code: period, label: period, price: 0),
         );
-        final couponCode = await resolveCouponCodeForBuy(planId: plan.id, period: period);
-        final signature = couponCode == null ? null : couponSignature(planId: plan.id, period: period, code: couponCode);
-        final couponDiscount = signature != null && couponCheckedSignature.value == signature
-            ? couponCheckedDiscount.value
-            : 0;
+        final checkout = await openCheckoutSetup(plan: plan, selectedPeriod: selectedPeriod);
+        if (checkout == null) return;
+        final methodId = checkout.methodId;
+        selectedMethodId.value = methodId;
+        final coupon = await resolveCouponForBuy(planId: plan.id, period: period, rawCouponCode: checkout.couponCode);
         final pricePreview = buildPricePreview(
           original: selectedPeriod.price,
-          couponDiscount: couponDiscount,
+          couponDiscount: coupon.discount,
           balanceAvailable: summary.value?.balance ?? 0,
           oldPlanOffset: 0,
         );
@@ -832,7 +832,8 @@ class GatewayPlansPage extends HookConsumerWidget {
 
         runningPlanId.value = plan.id;
         final portal = ref.read(slothGatewayPortalControllerProvider);
-        final orderNo = await portal.createOrder(planId: plan.id, period: period, couponCode: couponCode);
+        final created = await portal.createOrder(planId: plan.id, period: period, couponCode: coupon.couponCode);
+        final orderNo = created.orderNo;
         if (orderNo.isEmpty) throw GatewayApiException(message: g.unknownError);
 
         final preview = await portal.orderDetail(orderNo);
@@ -944,10 +945,7 @@ class GatewayPlansPage extends HookConsumerWidget {
                   ),
                 ],
               ),
-              if (noticesLoading.value) ...[
-                const SizedBox(height: 6),
-                const LinearProgressIndicator(minHeight: 2),
-              ],
+              if (noticesLoading.value) ...[const SizedBox(height: 6), const LinearProgressIndicator(minHeight: 2)],
               if (entries.isEmpty) ...[
                 const SizedBox(height: 8),
                 InkWell(
@@ -988,7 +986,10 @@ class GatewayPlansPage extends HookConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item.title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                              Text(
+                                item.title,
+                                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                              ),
                               const SizedBox(height: 4),
                               Text(
                                 _presentDateTime(item.updatedAt ?? item.createdAt),
@@ -1057,265 +1058,27 @@ class GatewayPlansPage extends HookConsumerWidget {
       );
     }
 
-    Widget promoCard() {
-      final couponUsageOrders = promoUsageOrders.value
-          .where((item) => item.hasPromoDiscount || item.hasGiftOrBalanceDeduction)
-          .toList();
-      final usageEntries = <({String title, String detail, String timestamp})>[
-        ...couponUsageOrders.map(
-          (item) => (
-            title: '${isZh ? '订单' : 'Order'} ${item.orderNo}',
-            detail:
-                '${_presentDateTime(item.createdAt)} · ${isZh ? '优惠券抵扣' : 'Coupon'} -${_presentPrice(item.discountAmount)} · ${isZh ? '余额抵扣' : 'Balance'} -${_presentPrice(item.balanceAmount)}',
-            timestamp: item.createdAt ?? '',
-          ),
-        ),
-        ...giftCardHistory.value.map(
-          (item) => (
-            title: '${isZh ? '礼品卡' : 'Gift card'} ${item.code ?? '--'}',
-            detail:
-                '${_presentDateTime(item.usedAt ?? item.createdAt)} · ${isZh ? '状态' : 'Status'} ${item.status ?? '--'} · ${isZh ? '金额' : 'Amount'} ${_presentPrice(item.amount)}',
-            timestamp: item.usedAt ?? item.createdAt ?? '',
-          ),
-        ),
-      ];
-      usageEntries.sort((a, b) {
-        final ad = DateTime.tryParse(a.timestamp) ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bd = DateTime.tryParse(b.timestamp) ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bd.compareTo(ad);
-      });
-      final canExpandUsage = usageEntries.length > 3;
-      final visibleEntries = usageExpanded.value ? usageEntries : usageEntries.take(3).toList();
-      return Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.redeem_rounded, size: 18, color: theme.colorScheme.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    isZh ? '优惠券 / 礼品卡' : 'Coupon / gift card',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: couponTextController,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: isZh ? '优惠券代码（下单前自动校验）' : 'Coupon code (checked before order)',
-                  prefixIcon: const Icon(Icons.local_offer_outlined),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.clear_rounded),
-                    onPressed: () {
-                      couponTextController.clear();
-                      couponPreviewText.value = null;
-                      couponCheckedSignature.value = null;
-                      couponCheckedDiscount.value = 0;
-                      couponCheckedCode.value = null;
-                    },
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                onChanged: (_) {
-                  couponPreviewText.value = null;
-                  couponCheckedSignature.value = null;
-                  couponCheckedDiscount.value = 0;
-                  couponCheckedCode.value = null;
-                },
-              ),
-              if (couponPreviewText.value != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  couponPreviewText.value!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              TextField(
-                controller: giftCardTextController,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: isZh ? '礼品卡 / 兑换码' : 'Gift card code',
-                  prefixIcon: const Icon(Icons.card_giftcard_rounded),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.clear_rounded),
-                    onPressed: () {
-                      giftCardTextController.clear();
-                      giftCardPreviewText.value = null;
-                    },
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                onChanged: (_) => giftCardPreviewText.value = null,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: promoBusy.value ? null : previewGiftCard,
-                        icon: const Icon(Icons.verified_outlined),
-                        label: Text(isZh ? '校验礼品卡' : 'Check gift card'),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _GatewayPrimaryActionButton(
-                      onPressed: promoBusy.value ? null : redeemGiftCard,
-                      icon: const Icon(Icons.redeem_rounded, size: 18),
-                      label: promoBusy.value ? g.processing : (isZh ? '立即兑换' : 'Redeem now'),
-                    ),
-                  ),
-                ],
-              ),
-              if (giftCardPreviewText.value != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  giftCardPreviewText.value!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              if (giftHistoryLoading.value) ...[const SizedBox(height: 8), const LinearProgressIndicator(minHeight: 2)],
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
-                  border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.history_rounded, size: 18, color: theme.colorScheme.primary),
-                        const SizedBox(width: 6),
-                        Text(
-                          isZh ? '优惠券 / 礼品卡使用记录' : 'Coupon / gift card usage',
-                          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const Spacer(),
-                        if (canExpandUsage)
-                          TextButton.icon(
-                            onPressed: () => usageExpanded.value = !usageExpanded.value,
-                            icon: Icon(
-                              usageExpanded.value ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                              size: 18,
-                            ),
-                            label: Text(
-                              usageExpanded.value
-                                  ? (isZh ? '收起记录' : 'Collapse')
-                                  : (isZh ? '展开全部 ${usageEntries.length} 条' : 'Expand ${usageEntries.length}'),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (usageEntries.isEmpty)
-                      Text(
-                        isZh ? '暂无优惠券或礼品卡使用记录' : 'No coupon or gift card usage yet',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ...visibleEntries.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.45),
-                            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 4),
-                              Text(
-                                item.detail,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     Widget planTab() {
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          noticeCard(),
-          rulesCard(),
-          promoCard(),
-          if (methods.value.isNotEmpty) ...[
-            Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: DropdownButtonFormField<int>(
-                  key: ValueKey('payment-method-${selectedMethodId.value}'),
-                  initialValue: selectedMethodId.value,
-                  decoration: InputDecoration(
-                    labelText: g.paymentMethod,
-                    prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: methods.value
-                      .map((m) => DropdownMenuItem(value: m.id, child: Text('${m.icon} ${m.name}')))
-                      .toList(),
-                  onChanged: (value) => selectedMethodId.value = value,
-                ),
-              ),
-            ),
-          ],
-          ...plans.value.map(
-            (plan) {
-              final periodCode = selectedPeriods.value[plan.id] ?? (plan.periods.isNotEmpty ? plan.periods.first.code : '');
-              final selectedPeriod = plan.periods.firstWhere(
-                (item) => item.code == periodCode,
-                orElse: () => GatewayPlanPeriod(code: periodCode, label: periodCode, price: 0),
-              );
-              final couponCode = couponTextController.text.trim();
-              final signature = couponCode.isEmpty
-                  ? null
-                  : couponSignature(planId: plan.id, period: selectedPeriod.code, code: couponCode);
-              final couponDiscount = signature != null && couponCheckedSignature.value == signature
-                  ? couponCheckedDiscount.value
-                  : 0;
-              final preview = buildPricePreview(
-                original: selectedPeriod.price,
-                couponDiscount: couponDiscount,
-                balanceAvailable: summary.value?.balance ?? 0,
-                oldPlanOffset: 0,
-              );
+          ...plans.value.map((plan) {
+            final periodCode =
+                selectedPeriods.value[plan.id] ?? (plan.periods.isNotEmpty ? plan.periods.first.code : '');
+            final selectedPeriod = plan.periods.firstWhere(
+              (item) => item.code == periodCode,
+              orElse: () => GatewayPlanPeriod(code: periodCode, label: periodCode, price: 0),
+            );
+            final summaryText = _sanitizeSummary(plan.displaySummary ?? plan.description);
+            final highlights = plan.displayHighlights.isNotEmpty
+                ? plan.displayHighlights
+                : <String>[
+                    '${g.planTraffic}: ${_presentTraffic(plan.transferEnable)}',
+                    '${g.planSpeed}: ${plan.speedLimit?.toString() ?? g.unlimited}',
+                    '${g.planDevices}: ${plan.deviceLimit?.toString() ?? g.unlimited}',
+                  ];
 
-              return Card(
+            return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -1340,22 +1103,26 @@ class GatewayPlansPage extends HookConsumerWidget {
                             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
+                        if ((plan.displayBadge ?? "").isNotEmpty)
+                          Chip(label: Text(plan.displayBadge!.trim())),
                         if (!plan.sell) Chip(label: Text(isZh ? '暂停售卖' : 'Unavailable')),
                       ],
                     ),
-                    if (plan.description.isNotEmpty) ...[
+                    if (summaryText.isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Text(plan.description, style: theme.textTheme.bodySmall),
+                      Text(
+                        summaryText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.45,
+                        ),
+                      ),
                     ],
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 10,
                       runSpacing: 6,
-                      children: [
-                        _TagText(text: '${g.planTraffic}: ${_presentTraffic(plan.transferEnable)}'),
-                        _TagText(text: '${g.planDevices}: ${plan.deviceLimit?.toString() ?? g.unlimited}'),
-                        _TagText(text: '${g.planSpeed}: ${plan.speedLimit?.toString() ?? g.unlimited}'),
-                      ],
+                      children: highlights.map((item) => _TagText(text: item)).toList(),
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
@@ -1373,109 +1140,26 @@ class GatewayPlansPage extends HookConsumerWidget {
                       onChanged: (value) {
                         if (value == null) return;
                         selectedPeriods.value = {...selectedPeriods.value, plan.id: value};
-                        if (couponCheckedCode.value != null) {
-                          couponCheckedSignature.value = null;
-                          couponCheckedDiscount.value = 0;
-                        }
                       },
                     ),
                     const SizedBox(height: 10),
-                    if (couponCode.isNotEmpty)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: promoBusy.value || runningPlanId.value == plan.id
-                              ? null
-                              : () => resolveCouponCodeForBuy(planId: plan.id, period: selectedPeriod.code),
-                          icon: const Icon(Icons.discount_outlined, size: 18),
-                          label: Text(isZh ? '校验优惠券' : 'Validate coupon'),
-                        ),
-                      ),
                     Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.24),
                         border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 6,
                         children: [
-                          Text(
-                            isZh ? '下单前金额预览' : 'Pre-order amount preview',
-                            style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                          _TagText(
+                            text: '${isZh ? '当前周期价格' : 'Selected price'}: ${_presentPrice(selectedPeriod.price)}',
                           ),
-                          const SizedBox(height: 8),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
-                              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
-                            ),
-                            child: Column(
-                              children: [
-                                _PreviewLine(
-                                  label: isZh ? '原价' : 'Original',
-                                  value: _presentPrice(preview.original),
-                                ),
-                                const SizedBox(height: 6),
-                                _PreviewLine(
-                                  label: isZh ? '总抵扣' : 'Total discount',
-                                  value: '-${_presentPrice(preview.coupon + preview.balance + preview.oldPlanOffset)}',
-                                  valueColor: SlothPalette.success,
-                                ),
-                                const SizedBox(height: 6),
-                                _PreviewLine(
-                                  label: isZh ? '最终实付' : 'Final payable',
-                                  value: _presentPrice(preview.finalPay),
-                                  valueColor: theme.colorScheme.primary,
-                                  emphasized: true,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
-                              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${isZh ? '优惠抵扣' : 'Coupon'}: -${_presentPrice(preview.coupon)}',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${isZh ? '余额抵扣' : 'Balance'}: -${_presentPrice(preview.balance)}',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${isZh ? '旧套餐折算抵扣' : 'Old plan offset'}: -${_presentPrice(preview.oldPlanOffset)}',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  isZh
-                                      ? '旧套餐折算抵扣以下单时服务端最终计算为准。'
-                                      : 'Old-plan offset is finalized by server when creating order.',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _TagText(text: isZh ? '支付方式和优惠券在下单时选择' : 'Payment and coupon are selected at checkout'),
                         ],
                       ),
                     ),
@@ -1488,13 +1172,15 @@ class GatewayPlansPage extends HookConsumerWidget {
                 ),
               ),
             );
-            },
-          ),
+          }),
           if (plans.value.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 24),
               child: Center(child: Text(g.noPurchasablePlans)),
             ),
+          const SizedBox(height: 4),
+          noticeCard(),
+          rulesCard(),
         ],
       );
     }
@@ -1753,6 +1439,7 @@ class GatewayPlansPage extends HookConsumerWidget {
         actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh))],
       ),
       body: body,
+      floatingActionButton: const GatewayAssistantFab(heroTag: 'plans_assistant_fab'),
     );
   }
 }
@@ -1895,50 +1582,6 @@ class _OrderFilterChip extends StatelessWidget {
         color: selected ? theme.colorScheme.primary.withValues(alpha: 0.44) : theme.colorScheme.outlineVariant,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
-  }
-}
-
-class _PreviewLine extends StatelessWidget {
-  const _PreviewLine({
-    required this.label,
-    required this.value,
-    this.valueColor,
-    this.emphasized = false,
-  });
-
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: emphasized ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: valueColor ?? theme.colorScheme.onSurface,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

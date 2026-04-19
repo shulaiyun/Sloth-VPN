@@ -3,6 +3,7 @@ import type { XboardAdapter } from "../adapter/xboard-adapter";
 import { config } from "../config";
 import { AppError, ErrorCodes } from "../errors";
 import { requireSession } from "../plugins/auth";
+import type { ReferralClaimStore } from "../store/referral-claim-store";
 import type { SessionStore } from "../store/session-store";
 import { ok } from "../utils/response";
 import { toIsoTimeOrNull } from "../utils/time";
@@ -10,6 +11,7 @@ import { normalizeTrafficQuota } from "../utils/traffic";
 
 type OrderDeps = {
   sessions: SessionStore;
+  claims: ReferralClaimStore;
   xboard: XboardAdapter;
 };
 
@@ -522,8 +524,19 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
       }
     }
 
+    if (session.referralClaimId) {
+      deps.claims.markOrderCreated(session.referralClaimId, orderNo);
+    }
+
+    const checkoutToken = Buffer.from(
+      `${session.sid}:${orderNo}:${Date.now()}`,
+      "utf8",
+    ).toString("base64url");
+
     return ok(reply, {
       order_no: orderNo,
+      checkout_token: checkoutToken,
+      next_action: "open_checkout",
       created_at: new Date().toISOString(),
     });
   });
@@ -549,6 +562,13 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
     const paymentData = checkout.data == null ? "" : String(checkout.data);
     const paymentUrl = /^https?:\/\//i.test(paymentData) ? paymentData : null;
     const completed = checkout.type === -1;
+    if (session.referralClaimId) {
+      if (completed) {
+        deps.claims.markPaid(session.referralClaimId, params.orderNo);
+      } else {
+        deps.claims.markCheckoutStarted(session.referralClaimId, params.orderNo);
+      }
+    }
 
     return ok(reply, {
       order_no: params.orderNo,
@@ -565,6 +585,9 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
     const params = request.params as { orderNo: string };
     const statusCode = await deps.xboard.getOrderStatus(session.xboardAuthData, params.orderNo);
     const mapped = mapOrderStatus(statusCode);
+    if (session.referralClaimId && (mapped.status === "completed" || mapped.status === "discounted")) {
+      deps.claims.markPaid(session.referralClaimId, params.orderNo);
+    }
     return ok(reply, {
       order_no: params.orderNo,
       status_code: statusCode,
@@ -581,6 +604,9 @@ export const registerOrderRoutes = (app: FastifyInstance, deps: OrderDeps): void
     const normalized = normalizeOrder(raw);
     if (!normalized.order_no) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, "Order does not exist");
+    }
+    if (session.referralClaimId && (normalized.status === "completed" || normalized.status === "discounted")) {
+      deps.claims.markPaid(session.referralClaimId, params.orderNo);
     }
     return ok(reply, {
       order: normalized,

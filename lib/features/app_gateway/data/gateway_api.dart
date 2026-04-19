@@ -203,6 +203,7 @@ class SlothGatewayApi with InfraLogger {
     required String deviceId,
     required String platform,
     String? appVersion,
+    String? claimId,
   }) async {
     final data = await _request(
       method: "POST",
@@ -213,6 +214,7 @@ class SlothGatewayApi with InfraLogger {
         "device_id": deviceId,
         "platform": platform,
         if (appVersion != null && appVersion.isNotEmpty) "app_version": appVersion,
+        if (claimId != null && claimId.isNotEmpty) "claim_id": claimId,
       },
     );
     return GatewayBindExchangeResult.fromMap(data);
@@ -226,6 +228,7 @@ class SlothGatewayApi with InfraLogger {
     String? appVersion,
     String? emailCode,
     String? inviteCode,
+    String? claimId,
   }) async {
     final data = await _request(
       method: "POST",
@@ -238,9 +241,34 @@ class SlothGatewayApi with InfraLogger {
         if (appVersion != null && appVersion.isNotEmpty) "app_version": appVersion,
         if (emailCode != null && emailCode.isNotEmpty) "email_code": emailCode,
         if (inviteCode != null && inviteCode.isNotEmpty) "invite_code": inviteCode,
+        if (claimId != null && claimId.isNotEmpty) "claim_id": claimId,
       },
     );
     return GatewayBindExchangeResult.fromMap(data);
+  }
+
+  Future<GatewayReferralClaim?> referralClaim({
+    String? claimId,
+    String? inviteCode,
+    String? campaign,
+    String channel = "app",
+    required String deviceFingerprint,
+  }) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/referral/claim",
+      auth: false,
+      body: {
+        if (claimId != null && claimId.isNotEmpty) "claim_id": claimId,
+        if (inviteCode != null && inviteCode.isNotEmpty) "invite_code": inviteCode,
+        if (campaign != null && campaign.isNotEmpty) "campaign": campaign,
+        "channel": channel,
+        "device_fingerprint": deviceFingerprint,
+      },
+    );
+    final raw = data["claim"];
+    if (raw is! Map) return null;
+    return GatewayReferralClaim.fromMap(_asStringKeyedMap(raw));
   }
 
   Future<bool> sendEmailVerify(String email) async {
@@ -374,7 +402,7 @@ class SlothGatewayApi with InfraLogger {
         .toList();
   }
 
-  Future<String> createOrder({
+  Future<GatewayOrderCreateResult> createOrder({
     required String accessToken,
     required int planId,
     required String period,
@@ -390,7 +418,7 @@ class SlothGatewayApi with InfraLogger {
         if (couponCode != null && couponCode.isNotEmpty) "coupon_code": couponCode,
       },
     );
-    return data["order_no"]?.toString() ?? "";
+    return GatewayOrderCreateResult.fromMap(data);
   }
 
   Future<GatewayCouponCheckResult> checkCoupon({
@@ -573,17 +601,57 @@ class SlothGatewayApi with InfraLogger {
     return GatewayTelegramBindingStatus.fromMap(data);
   }
 
+  Future<GatewayAssistantChatResult> assistantChat({
+    required String accessToken,
+    required List<Map<String, String>> messages,
+    String? query,
+  }) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/assistant/chat",
+      accessToken: accessToken,
+      body: {
+        if (query != null && query.trim().isNotEmpty) "query": query.trim(),
+        "messages": messages,
+      },
+    );
+    return GatewayAssistantChatResult.fromMap(data);
+  }
+
+  Future<GatewayAssistantTicketResult> assistantTicketHandoff({
+    required String accessToken,
+    required String question,
+    required String answer,
+    String? context,
+  }) async {
+    final data = await _request(
+      method: "POST",
+      path: "/api/app/v1/assistant/ticket-handoff",
+      accessToken: accessToken,
+      body: {
+        "question": question,
+        "answer": answer,
+        if (context != null && context.trim().isNotEmpty) "context": context.trim(),
+      },
+    );
+    return GatewayAssistantTicketResult.fromMap(data);
+  }
+
   Future<Map<String, dynamic>> _request({
     required String method,
     required String path,
     Map<String, dynamic>? body,
     String? accessToken,
+    bool auth = true,
   }) async {
     try {
       final response = await _dio.request<dynamic>(
         path,
         data: body,
-        options: Options(method: method, headers: {if (accessToken != null) "Authorization": "Bearer $accessToken"}),
+        options: Options(
+          method: method,
+          headers: {if (auth && accessToken != null) "Authorization": "Bearer $accessToken"},
+        ),
       );
 
       final payload = _asStringKeyedMap(response.data);

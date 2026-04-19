@@ -7,22 +7,19 @@ import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/model/constants.dart';
 import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
-import 'package:hiddify/core/theme/sloth_design_tokens.dart';
 import 'package:hiddify/core/widget/sloth_icon.dart';
-import 'package:hiddify/features/app_gateway/data/gateway_api.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_l10n.dart';
 import 'package:hiddify/features/app_gateway/model/gateway_models.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_portal_controller.dart';
 import 'package:hiddify/features/app_gateway/notifier/gateway_state_bus.dart';
-import 'package:hiddify/features/connection/model/connection_status.dart';
-import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
+import 'package:hiddify/features/app_gateway/widget/gateway_assistant_fab.dart';
 import 'package:hiddify/features/home/widget/connection_button.dart';
 import 'package:hiddify/features/per_app_proxy/model/per_app_proxy_mode.dart';
+import 'package:hiddify/features/profile/model/profile_entity.dart';
+import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
+import 'package:hiddify/features/profile/widget/profile_tile.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_delay_indicator.dart';
-import 'package:hiddify/features/proxy/active/active_proxy_notifier.dart';
-import 'package:hiddify/features/proxy/active/ip_widget.dart';
-import 'package:hiddify/features/proxy/model/proxy_display_name.dart';
 import 'package:hiddify/gen/assets.gen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -34,13 +31,6 @@ class HomePage extends HookConsumerWidget {
     final theme = Theme.of(context);
     final t = ref.watch(translationsProvider).requireValue;
     final gatewayRefreshTick = ref.watch(slothGatewayUiRefreshTickProvider);
-    final connectionStatus = ref.watch(connectionNotifierProvider);
-    final activeProxy = ref.watch(activeProxyNotifierProvider).valueOrNull;
-    final delay = activeProxy?.urlTestDelay ?? 0;
-    final statusText = switch (connectionStatus.valueOrNull) {
-      final ConnectionStatus status => status.present(t),
-      _ => t.connection.connecting,
-    };
 
     return Scaffold(
       appBar: AppBar(
@@ -108,18 +98,6 @@ class HomePage extends HookConsumerWidget {
               constraints: const BoxConstraints(maxWidth: 680),
               child: CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-                      child: _ConnectionHeaderCard(
-                        title: statusText,
-                        connected: connectionStatus.valueOrNull == const Connected(),
-                        delay: delay,
-                        activeNode: activeProxy?.tagDisplay ?? t.pages.proxies.empty,
-                        activeCountryCode: activeProxy?.ipinfo.countryCode,
-                      ),
-                    ),
-                  ),
                   const SliverToBoxAdapter(
                     child: Padding(padding: EdgeInsets.fromLTRB(14, 4, 14, 0), child: _RoutingModeCard()),
                   ),
@@ -151,6 +129,7 @@ class HomePage extends HookConsumerWidget {
           ),
         ],
       ),
+      floatingActionButton: const GatewayAssistantFab(heroTag: 'home_assistant_fab'),
     );
   }
 }
@@ -179,154 +158,6 @@ class AppVersionLabel extends HookConsumerWidget {
           textDirection: TextDirection.ltr,
           style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
         ),
-      ),
-    );
-  }
-}
-
-class _ConnectionHeaderCard extends StatelessWidget {
-  const _ConnectionHeaderCard({
-    required this.title,
-    required this.connected,
-    required this.delay,
-    required this.activeNode,
-    this.activeCountryCode,
-  });
-
-  final String title;
-  final bool connected;
-  final int delay;
-  final String activeNode;
-  final String? activeCountryCode;
-
-  String _cleanNodeLabel(String value, {required bool isZh}) {
-    final withoutRegionalFlags = value.replaceAll(RegExp(r'[\u{1F1E6}-\u{1F1FF}]{2}', unicode: true), '');
-    final withoutLeadingSymbols = withoutRegionalFlags.replaceAll(RegExp(r'^\s*[^\w\u4e00-\u9fa5]+\s*'), '');
-    final normalized = withoutLeadingSymbols.replaceAll(RegExp(r'\s+'), ' ').trim();
-    final cleaned = normalized.isEmpty ? value : normalized;
-    return localizeProxyDisplay(cleaned, isZh: isZh);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
-    final theme = Theme.of(context);
-    final statusColor = connected ? SlothPalette.success : theme.colorScheme.primary;
-    final delayText = delay <= 0
-        ? "--"
-        : delay > 65000
-        ? (isZh ? "超时" : "timeout")
-        : "${delay}ms";
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(SlothRadii.lg),
-        gradient: SlothGradients.heroBackground,
-        boxShadow: SlothShadows.card,
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const SlothIcon(SlothIconType.sloth, color: Colors.white),
-              ),
-              const Gap(6),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  color: statusColor.withValues(alpha: 0.2),
-                ),
-                child: Text(
-                  connected ? (isZh ? "\u5df2\u8fde\u63a5" : "Connected") : (isZh ? "\u672a\u8fde\u63a5" : "Offline"),
-                  style: theme.textTheme.labelSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          const Gap(8),
-          Row(
-            children: [
-              Expanded(
-                child: _StatMini(
-                  icon: SlothIconType.server,
-                  label: isZh ? "节点" : "Node",
-                  value: _cleanNodeLabel(activeNode, isZh: isZh),
-                  leading: activeCountryCode == null || activeCountryCode!.trim().isEmpty
-                      ? null
-                      : IPCountryFlag(countryCode: activeCountryCode),
-                ),
-              ),
-              const Gap(8),
-              Expanded(
-                child: _StatMini(icon: SlothIconType.latency, label: isZh ? "延迟" : "Latency", value: delayText),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatMini extends StatelessWidget {
-  const _StatMini({required this.icon, required this.label, required this.value, this.leading});
-
-  final SlothIconType icon;
-  final String label;
-  final String value;
-  final Widget? leading;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withValues(alpha: 0.13)),
-      child: Row(
-        children: [
-          SlothIcon(icon, size: 16, color: Colors.white),
-          const Gap(4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: theme.textTheme.labelSmall?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
-                Row(
-                  children: [
-                    if (leading != null) ...[leading!, const Gap(4)],
-                    Expanded(
-                      child: Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -400,6 +231,41 @@ class _RoutingModeCard extends ConsumerWidget {
               },
             ),
             const Gap(8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.34),
+                border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    selectedMode == PerAppProxyMode.off ? Icons.public_rounded : Icons.hub_rounded,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const Gap(6),
+                  Expanded(
+                    child: Text(
+                      selectedMode == PerAppProxyMode.off
+                          ? (isZh
+                                ? '全局模式：除直连白名单外，全部流量走代理。'
+                                : 'Global mode routes every app through proxy for stable connectivity.')
+                          : (isZh
+                                ? '分流模式：仅命中规则或选定应用走代理，其余直连。'
+                                : 'Split mode proxies selected apps only and keeps local apps direct.'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Gap(8),
             Row(
               children: [
                 Expanded(
@@ -437,7 +303,6 @@ class _GatewayEntryCard extends ConsumerStatefulWidget {
 
 class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
   bool _loading = true;
-  bool _syncing = false;
   bool _loggedIn = false;
   GatewayAccountSummary? _summary;
 
@@ -506,67 +371,21 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
     }
   }
 
-  Future<void> _syncNow() async {
-    setState(() => _syncing = true);
-    final g = GatewayL10n.of(context);
-    final theme = Theme.of(context);
-
-    void showReadableTip(String message) {
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-          backgroundColor: theme.brightness == Brightness.dark ? const Color(0xFF133564) : const Color(0xFF1C4DA1),
-          content: Text(
-            message,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          ),
-          duration: const Duration(seconds: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    }
-
-    try {
-      await ref.read(slothGatewayPortalControllerProvider).syncNow();
-      await _refresh();
-      if (!mounted) return;
-      showReadableTip(g.syncCompleted);
-    } on GatewayApiException catch (error) {
-      if (!mounted) return;
-      showReadableTip(g.syncFailed(error.message));
-    } catch (_) {
-      if (!mounted) return;
-      showReadableTip(g.syncFailed("unknown"));
-    } finally {
-      if (mounted) setState(() => _syncing = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final g = GatewayL10n.of(context);
-    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('zh');
     final theme = Theme.of(context);
-    final trafficRemaining = _summary?.trafficRemaining ?? 0;
-    final accountRedirect = Uri.encodeComponent("/gateway-account");
-
-    if (_loading) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-              const Gap(10),
-              Text(g.checkingAccountStatus),
-            ],
-          ),
-        ),
-      );
+    final activeProfile = ref.watch(activeProfileProvider).valueOrNull;
+    final remoteProfile = activeProfile is RemoteProfileEntity ? activeProfile : null;
+    if (remoteProfile != null) {
+      return ProfileTile(profile: remoteProfile, isMain: true);
     }
+    final summaryTraffic = _summary?.trafficRemaining ?? 0;
+    final summaryExpire = _formatIsoDate(_summary?.expiredAt);
+    final shouldShowCard = _loggedIn || summaryExpire != "--" || summaryTraffic > 0;
+
+    if (_loading && !shouldShowCard) return const SizedBox.shrink();
+    if (!_loading && !shouldShowCard) return const SizedBox.shrink();
 
     return Card(
       child: Padding(
@@ -574,186 +393,26 @@ class _GatewayEntryCardState extends ConsumerState<_GatewayEntryCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              Localizations.localeOf(context).languageCode.startsWith('zh') ? '当前订阅状态' : 'Current subscription',
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Text(
-                  g.accountAndPlanSectionTitle,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                Expanded(
+                  child: _MiniStatusTile(label: g.homeExpireAt, value: summaryExpire),
                 ),
-                const Spacer(),
-                Text(
-                  _loggedIn ? g.statusLoggedIn(_summary?.email ?? "--") : g.statusNotLoggedIn,
-                  style: theme.textTheme.bodySmall,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _MiniStatusTile(
+                    label: g.homeRemainingTraffic,
+                    value: summaryTraffic > 0 ? _formatTraffic(summaryTraffic) : "--",
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (_loggedIn) ...[
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _MiniStatusTile(label: g.homeCurrentPlan, value: _summary?.planName ?? "--"),
-                  _MiniStatusTile(label: g.homeExpireAt, value: _formatIsoDate(_summary?.expiredAt)),
-                  _MiniStatusTile(label: g.homeRemainingTraffic, value: _formatTraffic(trafficRemaining)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _GatewayEntryPrimaryAction(
-                      onPressed: () => context.go("/gateway-account"),
-                      icon: const Icon(Icons.account_circle_rounded),
-                      label: g.myAccount,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: _GatewayEntryOutlineAction(
-                      onPressed: () => context.go("/gateway-plans"),
-                      icon: const Icon(Icons.shopping_bag_rounded),
-                      label: isZh ? '套餐/续费' : 'Plans',
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: _GatewayEntryOutlineAction(
-                      onPressed: _syncing ? null : _syncNow,
-                      icon: _syncing
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.sync_rounded),
-                      label: _syncing ? g.processing : g.syncNow,
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              Text(g.homeGuide, style: theme.textTheme.bodySmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _GatewayEntryLoginAction(
-                    onPressed: () => context.push("/home/gateway-login?redirect=$accountRedirect"),
-                    icon: const Icon(Icons.login_rounded),
-                    label: g.login,
-                  ),
-                  OutlinedButton(
-                    onPressed: () => context.push("/home/gateway-register?redirect=$accountRedirect"),
-                    child: Text(g.register),
-                  ),
-                  TextButton(onPressed: () => context.go("/gateway-plans"), child: Text(g.viewPlans)),
-                ],
-              ),
-            ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GatewayEntryPrimaryAction extends StatelessWidget {
-  const _GatewayEntryPrimaryAction({required this.onPressed, required this.icon, required this.label});
-
-  final VoidCallback? onPressed;
-  final Widget icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final disabled = onPressed == null;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: disabled
-            ? null
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFFFA7C7), Color(0xFFF277A9), Color(0xFFCF5B96)],
-              ),
-        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
-        boxShadow: disabled ? null : SlothShadows.card,
-      ),
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: icon,
-        label: Text(label),
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          shadowColor: Colors.transparent,
-        ),
-      ),
-    );
-  }
-}
-
-class _GatewayEntryOutlineAction extends StatelessWidget {
-  const _GatewayEntryOutlineAction({required this.onPressed, required this.icon, required this.label});
-
-  final VoidCallback? onPressed;
-  final Widget icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final disabled = onPressed == null;
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: IconTheme(
-        data: IconThemeData(size: 17, color: disabled ? theme.disabledColor : null),
-        child: icon,
-      ),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: disabled ? 0.35 : 0.85)),
-        backgroundColor: theme.colorScheme.surfaceContainerHigh.withValues(
-          alpha: theme.brightness == Brightness.dark ? 0.36 : 0.62,
-        ),
-        foregroundColor: disabled ? theme.disabledColor : theme.colorScheme.onSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
-
-class _GatewayEntryLoginAction extends StatelessWidget {
-  const _GatewayEntryLoginAction({required this.onPressed, required this.icon, required this.label});
-
-  final VoidCallback? onPressed;
-  final Widget icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final disabled = onPressed == null;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: disabled
-            ? null
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF113D84), Color(0xFF2F72D4), Color(0xFF34BFD0)],
-              ),
-        color: disabled ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
-        boxShadow: disabled ? null : SlothShadows.card,
-      ),
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: icon,
-        label: Text(label),
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          shadowColor: Colors.transparent,
         ),
       ),
     );

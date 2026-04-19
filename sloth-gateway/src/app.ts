@@ -15,6 +15,9 @@ import { registerAccountRoutes } from "./routes/account";
 import { registerContentRoutes } from "./routes/content";
 import { registerSupportRoutes } from "./routes/support";
 import { registerUpdateRoutes } from "./routes/update";
+import { registerReferralRoutes } from "./routes/referral";
+import { registerAssistantRoutes } from "./routes/assistant";
+import { ReferralClaimStore } from "./store/referral-claim-store";
 
 export const buildApp = () => {
   const app = Fastify({
@@ -41,20 +44,23 @@ export const buildApp = () => {
 
   const binds = new BindStore();
   const sessions = new SessionStore();
+  const claims = new ReferralClaimStore(config.referralStoragePath);
   const xboard = new XboardAdapter(config.xboardBaseUrl, config.xboardTimeoutMs);
 
   app.get("/healthz", async (_, reply) => {
     return reply.send({ ok: true, service: "sloth-gateway", ts: new Date().toISOString() });
   });
 
-  registerAuthRoutes(app, { binds, sessions, xboard });
-  registerBootstrapRoutes(app, { sessions, xboard });
+  registerAuthRoutes(app, { binds, sessions, claims, xboard });
+  registerBootstrapRoutes(app, { sessions, claims, xboard });
   registerSubscriptionRoutes(app, { sessions, xboard });
   registerPlanRoutes(app, { sessions, xboard });
-  registerOrderRoutes(app, { sessions, xboard });
+  registerOrderRoutes(app, { sessions, claims, xboard });
   registerAccountRoutes(app, { sessions, xboard, xboardWebBaseUrl: config.xboardWebBaseUrl });
   registerContentRoutes(app, { sessions, xboard });
   registerSupportRoutes(app, { sessions, xboard });
+  registerAssistantRoutes(app, { sessions, xboard });
+  registerReferralRoutes(app, { sessions, claims });
   registerPaymentRoutes(app);
   registerUpdateRoutes(app);
 

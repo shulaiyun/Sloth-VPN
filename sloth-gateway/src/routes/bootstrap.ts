@@ -2,16 +2,37 @@
 import { config } from "../config";
 import { AppError, ErrorCodes } from "../errors";
 import { requireSession } from "../plugins/auth";
+import type { ReferralClaimStore } from "../store/referral-claim-store";
 import type { SessionStore } from "../store/session-store";
 import type { XboardAdapter } from "../adapter/xboard-adapter";
 import { signPullToken } from "../utils/jwt";
+import {
+  buildBrandProfile,
+  buildFeatureFlags,
+  buildGrowthCenterSummary,
+  buildHomeSurface,
+  buildNetworkDiagnostics,
+  buildPortalSchema,
+  buildRoutingPresets,
+} from "../utils/product-surface";
 import { ok } from "../utils/response";
 import { toIsoTimeOrNull } from "../utils/time";
 import { normalizeTrafficSummary } from "../utils/traffic";
 
 type BootstrapDeps = {
   sessions: SessionStore;
+  claims: ReferralClaimStore;
   xboard: XboardAdapter;
+};
+
+const formatTrafficText = (bytes: number): string => {
+  const value = Math.max(0, Number(bytes || 0));
+  if (value <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
+  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const divisor = Math.pow(1024, index);
+  const precision = index <= 1 ? 0 : 1;
+  return `${(value / divisor).toFixed(precision)} ${units[index]}`;
 };
 
 const buildAccountSummary = async (
@@ -63,14 +84,48 @@ const buildAccountSummary = async (
   const pullUrl = `${config.publicBaseUrl}/api/app/v1/subscription/pull?token=${encodeURIComponent(pullToken)}`;
   const ticketUrl = config.defaultTicketUrl || `${config.xboardBaseUrl}/#/ticket`;
   const noticeUrl = config.defaultNoticeUrl || `${config.xboardBaseUrl}/#/notice`;
+  const expiredAt = toIsoTimeOrNull(subscribe?.expired_at ?? user.expired_at ?? null);
+
+  let pendingOrderCount = 0;
+  try {
+    const orders = await deps.xboard.getOrders(xboardAuthData);
+    pendingOrderCount = Array.isArray(orders)
+      ? orders.filter((item) => {
+          const status = Number(item?.status ?? -1);
+          return status === 0 || status === 1;
+        }).length
+      : 0;
+  } catch {
+    pendingOrderCount = 0;
+  }
+
+  const inviteSummary = await readInviteSummarySafe(deps, xboardAuthData);
+  const claim = session?.referralClaimId ? deps.claims.get(session.referralClaimId) : undefined;
+  const nodeCount = session?.nodeCount ?? null;
+  const featureFlags = buildFeatureFlags();
 
   return {
+    brand_profile: buildBrandProfile(),
+    feature_flags: featureFlags,
+    portal_schema: buildPortalSchema(),
+    assistant_config: {
+      enabled: config.assistantEnabled,
+      provider: config.assistantProvider,
+      model: config.assistantModel,
+      fallback_enabled: config.assistantFallbackEnabled,
+      ticket_handoff_enabled: config.assistantTicketHandoffEnabled,
+    },
+    ios_guide: {
+      title: config.iosGuideTitle,
+      url: config.iosGuideUrl || null,
+      markdown: config.iosGuideMarkdown || null,
+    },
     user: {
       id: subscribe?.uuid ?? String(user.uuid ?? ""),
       email: user.email,
       plan_name: resolvedPlanName,
       registered_at: registeredAt,
-      expired_at: toIsoTimeOrNull(subscribe?.expired_at ?? user.expired_at ?? null),
+      expired_at: expiredAt,
       traffic_used: trafficSummary.usedBytes,
       traffic_total: trafficSummary.totalBytes,
       traffic_unit_detected: trafficSummary.unit,
@@ -84,7 +139,7 @@ const buildAccountSummary = async (
       pull_url: pullUrl,
       last_synced_at: session?.lastSyncedAt ?? null,
       version: session?.subscriptionVersion ?? null,
-      node_count: session?.nodeCount ?? null,
+      node_count: nodeCount,
       reset_day: subscribe?.reset_day ?? null,
     },
     links: {
@@ -104,6 +159,37 @@ const buildAccountSummary = async (
         text: config.newUserDiscountText,
       },
     },
+    routing_presets: buildRoutingPresets(),
+    network_diagnostics: buildNetworkDiagnostics({
+      expiredAt,
+      nodeCount,
+      lastSyncedAt: session?.lastSyncedAt ?? null,
+      hasPullUrl: pullUrl.length > 0,
+      pendingOrderCount,
+    }),
+    home_surface: buildHomeSurface({
+      planName: resolvedPlanName,
+      nodeCount,
+      trafficRemainingText: formatTrafficText(Math.max(0, trafficSummary.totalBytes - trafficSummary.usedBytes)),
+      expireAtText: expiredAt,
+    }),
+    growth_center_summary: buildGrowthCenterSummary({
+      inviteCode: claim?.inviteCode ?? inviteSummary.invite_code,
+      claimId: claim?.claimId ?? null,
+      invitedCount: inviteSummary.invited_count,
+      rebateAvailable: inviteSummary.rebate_available,
+    }),
+    referral_claim: claim
+      ? {
+          claim_id: claim.claimId,
+          invite_code: claim.inviteCode,
+          channel: claim.channel,
+          campaign: claim.campaign,
+          install_claim_status: claim.installClaimStatus,
+          signup_status: claim.signupStatus,
+          first_paid_order_status: claim.firstPaidOrderStatus,
+        }
+      : null,
   };
 };
 

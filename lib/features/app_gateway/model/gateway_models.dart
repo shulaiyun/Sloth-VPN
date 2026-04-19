@@ -12,6 +12,17 @@ double _asDouble(dynamic value, [double fallback = 0]) {
   return fallback;
 }
 
+bool _asBool(dynamic value, [bool fallback = false]) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == "true" || normalized == "1" || normalized == "yes" || normalized == "on") return true;
+    if (normalized == "false" || normalized == "0" || normalized == "no" || normalized == "off") return false;
+  }
+  return fallback;
+}
+
 String? _asNullableString(dynamic value) {
   if (value == null) return null;
   final text = value.toString().trim();
@@ -31,6 +42,11 @@ Map<String, dynamic> _asMap(dynamic value) {
   return const <String, dynamic>{};
 }
 
+List<String> _asStringList(dynamic value) {
+  if (value is! List) return const <String>[];
+  return value.map((item) => item.toString().trim()).where((item) => item.isNotEmpty).toList();
+}
+
 class GatewayBindExchangeResult {
   GatewayBindExchangeResult({
     required this.accessToken,
@@ -39,6 +55,7 @@ class GatewayBindExchangeResult {
     this.userEmail,
     this.userUuid,
     this.inviteReward,
+    this.referralClaim,
   });
 
   final String accessToken;
@@ -47,10 +64,12 @@ class GatewayBindExchangeResult {
   final String? userEmail;
   final String? userUuid;
   final GatewayInviteRewardResult? inviteReward;
+  final GatewayReferralClaim? referralClaim;
 
   factory GatewayBindExchangeResult.fromMap(Map<String, dynamic> map) {
     final user = _asMap(map["user"]);
     final inviteRewardRaw = map["invite_reward"];
+    final referralClaimRaw = map["referral_claim"];
     return GatewayBindExchangeResult(
       accessToken: map["access_token"]?.toString() ?? "",
       refreshToken: map["refresh_token"]?.toString() ?? "",
@@ -58,6 +77,7 @@ class GatewayBindExchangeResult {
       userEmail: _asNullableString(user["email"]),
       userUuid: _asNullableString(user["uuid"]),
       inviteReward: inviteRewardRaw is Map ? GatewayInviteRewardResult.fromMap(_asMap(inviteRewardRaw)) : null,
+      referralClaim: referralClaimRaw is Map ? GatewayReferralClaim.fromMap(_asMap(referralClaimRaw)) : null,
     );
   }
 }
@@ -89,6 +109,288 @@ class GatewayInviteRewardResult {
       giftCardCodeMasked: _asNullableString(map["gift_card_code_masked"]),
     );
   }
+}
+
+class GatewayReferralClaim {
+  GatewayReferralClaim({
+    required this.claimId,
+    this.inviteCode,
+    required this.channel,
+    this.campaign,
+    required this.installClaimStatus,
+    required this.signupStatus,
+    required this.firstPaidOrderStatus,
+    this.createdAt,
+    this.updatedAt,
+    this.appClaimUrl,
+  });
+
+  final String claimId;
+  final String? inviteCode;
+  final String channel;
+  final String? campaign;
+  final String installClaimStatus;
+  final String signupStatus;
+  final String firstPaidOrderStatus;
+  final String? createdAt;
+  final String? updatedAt;
+  final String? appClaimUrl;
+
+  factory GatewayReferralClaim.fromMap(Map<String, dynamic> map) {
+    final links = _asMap(map["growth_links"]);
+    return GatewayReferralClaim(
+      claimId: map["claim_id"]?.toString() ?? "",
+      inviteCode: _asNullableString(map["invite_code"]),
+      channel: _asNullableString(map["channel"]) ?? "direct",
+      campaign: _asNullableString(map["campaign"]),
+      installClaimStatus: _asNullableString(map["install_claim_status"]) ?? "pending",
+      signupStatus: _asNullableString(map["signup_status"]) ?? "pending",
+      firstPaidOrderStatus: _asNullableString(map["first_paid_order_status"]) ?? "pending",
+      createdAt: _asNullableString(map["created_at"]),
+      updatedAt: _asNullableString(map["updated_at"]),
+      appClaimUrl: _asNullableString(links["app_claim_url"]),
+    );
+  }
+}
+
+class GatewayBrandProfile {
+  GatewayBrandProfile({
+    required this.brandId,
+    required this.brandCode,
+    required this.name,
+    this.tagline,
+    this.description,
+    this.logoUrl,
+    this.supportEmail,
+    this.supportTelegram,
+    this.primaryColor,
+    this.secondaryColor,
+    this.accentColor,
+    this.fontFamily,
+    this.defaultLocale,
+    this.deploymentMode,
+  });
+
+  final String brandId;
+  final String brandCode;
+  final String name;
+  final String? tagline;
+  final String? description;
+  final String? logoUrl;
+  final String? supportEmail;
+  final String? supportTelegram;
+  final String? primaryColor;
+  final String? secondaryColor;
+  final String? accentColor;
+  final String? fontFamily;
+  final String? defaultLocale;
+  final String? deploymentMode;
+
+  factory GatewayBrandProfile.fromMap(Map<String, dynamic> map) => GatewayBrandProfile(
+    brandId: _asNullableString(map["brand_id"]) ?? "slothvpn",
+    brandCode: _asNullableString(map["brand_code"]) ?? "slothvpn",
+    name: _asNullableString(map["name"]) ?? "SlothVPN",
+    tagline: _asNullableString(map["tagline"]),
+    description: _asNullableString(map["description"]),
+    logoUrl: _asNullableString(map["logo_url"]),
+    supportEmail: _asNullableString(map["support_email"]),
+    supportTelegram: _asNullableString(map["support_telegram"]),
+    primaryColor: _asNullableString(map["primary_color"]),
+    secondaryColor: _asNullableString(map["secondary_color"]),
+    accentColor: _asNullableString(map["accent_color"]),
+    fontFamily: _asNullableString(map["font_family"]),
+    defaultLocale: _asNullableString(map["default_locale"]),
+    deploymentMode: _asNullableString(map["deployment_mode"]),
+  );
+}
+
+class GatewayFeatureFlags {
+  GatewayFeatureFlags({required this.flags});
+
+  final Map<String, bool> flags;
+
+  bool isEnabled(String key, [bool fallback = false]) => flags[key] ?? fallback;
+
+  bool get splitTunnelEnabled => isEnabled("app_split_tunnel_enabled", true);
+  bool get diagnosticsEnabled => isEnabled("diagnostics_enabled", true);
+  bool get inviteEnabled => isEnabled("invite_enabled", true);
+  bool get operatorConsoleEnabled => isEnabled("operator_console_enabled", false);
+
+  factory GatewayFeatureFlags.fromMap(Map<String, dynamic> map) => GatewayFeatureFlags(
+    flags: map.map((key, value) => MapEntry(key, _asBool(value))),
+  );
+}
+
+class GatewayPortalSchema {
+  GatewayPortalSchema({
+    required this.publicSections,
+    required this.portalSections,
+    required this.operatorSections,
+  });
+
+  final List<String> publicSections;
+  final List<String> portalSections;
+  final List<String> operatorSections;
+
+  factory GatewayPortalSchema.fromMap(Map<String, dynamic> map) => GatewayPortalSchema(
+    publicSections: (map["public_sections"] as List? ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList(),
+    portalSections: (map["portal_sections"] as List? ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList(),
+    operatorSections: (map["operator_sections"] as List? ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList(),
+  );
+}
+
+class GatewayRoutingPreset {
+  GatewayRoutingPreset({
+    required this.key,
+    required this.title,
+    required this.description,
+    required this.appMode,
+  });
+
+  final String key;
+  final String title;
+  final String description;
+  final String appMode;
+
+  factory GatewayRoutingPreset.fromMap(Map<String, dynamic> map) => GatewayRoutingPreset(
+    key: _asNullableString(map["key"]) ?? "global",
+    title: _asNullableString(map["title"]) ?? "",
+    description: _asNullableString(map["description"]) ?? "",
+    appMode: _asNullableString(map["app_mode"]) ?? "all",
+  );
+}
+
+class GatewayNetworkDiagnostic {
+  GatewayNetworkDiagnostic({
+    required this.key,
+    required this.label,
+    required this.status,
+    required this.message,
+    this.action,
+  });
+
+  final String key;
+  final String label;
+  final String status;
+  final String message;
+  final String? action;
+
+  bool get isHealthy => status == "healthy";
+
+  factory GatewayNetworkDiagnostic.fromMap(Map<String, dynamic> map) => GatewayNetworkDiagnostic(
+    key: _asNullableString(map["key"]) ?? "",
+    label: _asNullableString(map["label"]) ?? "",
+    status: _asNullableString(map["status"]) ?? "unknown",
+    message: _asNullableString(map["message"]) ?? "",
+    action: _asNullableString(map["action"]),
+  );
+}
+
+class GatewayHomeSurface {
+  GatewayHomeSurface({
+    this.heroTitle,
+    this.heroLead,
+    required this.promiseItems,
+    this.primaryAction,
+    this.secondaryAction,
+  });
+
+  final String? heroTitle;
+  final String? heroLead;
+  final List<String> promiseItems;
+  final String? primaryAction;
+  final String? secondaryAction;
+
+  factory GatewayHomeSurface.fromMap(Map<String, dynamic> map) => GatewayHomeSurface(
+    heroTitle: _asNullableString(map["hero_title"]),
+    heroLead: _asNullableString(map["hero_lead"]),
+    promiseItems: (map["promise_items"] as List? ?? const [])
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList(),
+    primaryAction: _asNullableString(map["primary_action"]),
+    secondaryAction: _asNullableString(map["secondary_action"]),
+  );
+}
+
+class GatewayGrowthCenterSummary {
+  GatewayGrowthCenterSummary({
+    this.inviteCode,
+    required this.invitedCount,
+    required this.rebateAvailable,
+    this.landingUrl,
+    this.registerUrl,
+    this.downloadUrl,
+    this.appClaimUrl,
+  });
+
+  final String? inviteCode;
+  final int invitedCount;
+  final double rebateAvailable;
+  final String? landingUrl;
+  final String? registerUrl;
+  final String? downloadUrl;
+  final String? appClaimUrl;
+
+  factory GatewayGrowthCenterSummary.fromMap(Map<String, dynamic> map) {
+    final shareTemplates = _asMap(map["share_templates"]);
+    return GatewayGrowthCenterSummary(
+      inviteCode: _asNullableString(map["invite_code"]),
+      invitedCount: _asInt(map["invited_count"]),
+      rebateAvailable: _asDouble(map["rebate_available"]),
+      landingUrl: _asNullableString(shareTemplates["landing_url"]),
+      registerUrl: _asNullableString(shareTemplates["register_url"]),
+      downloadUrl: _asNullableString(shareTemplates["download_url"]),
+      appClaimUrl: _asNullableString(shareTemplates["app_claim_url"]),
+    );
+  }
+}
+
+class GatewayAssistantConfig {
+  GatewayAssistantConfig({
+    required this.enabled,
+    required this.provider,
+    this.model,
+    required this.fallbackEnabled,
+    required this.ticketHandoffEnabled,
+  });
+
+  final bool enabled;
+  final String provider;
+  final String? model;
+  final bool fallbackEnabled;
+  final bool ticketHandoffEnabled;
+
+  factory GatewayAssistantConfig.fromMap(Map<String, dynamic> map) => GatewayAssistantConfig(
+    enabled: _asBool(map["enabled"], true),
+    provider: _asNullableString(map["provider"]) ?? "knowledge_fallback",
+    model: _asNullableString(map["model"]),
+    fallbackEnabled: _asBool(map["fallback_enabled"], true),
+    ticketHandoffEnabled: _asBool(map["ticket_handoff_enabled"], true),
+  );
+}
+
+class GatewayIosGuide {
+  GatewayIosGuide({this.title, this.url, this.markdown});
+
+  final String? title;
+  final String? url;
+  final String? markdown;
+
+  factory GatewayIosGuide.fromMap(Map<String, dynamic> map) => GatewayIosGuide(
+    title: _asNullableString(map["title"]),
+    url: _asNullableString(map["url"]),
+    markdown: _asNullableString(map["markdown"]),
+  );
 }
 
 class GatewayAuthPolicy {
@@ -335,6 +637,16 @@ class GatewayAccountSummary {
     this.newUserDiscountPercent = 0,
     this.newUserDiscountWindowDays = 0,
     this.newUserDiscountText,
+    this.brandProfile,
+    this.featureFlags,
+    this.portalSchema,
+    this.routingPresets = const [],
+    this.diagnostics = const [],
+    this.homeSurface,
+    this.growthCenter,
+    this.referralClaim,
+    this.assistantConfig,
+    this.iosGuide,
   });
 
   final String email;
@@ -361,6 +673,16 @@ class GatewayAccountSummary {
   final int newUserDiscountPercent;
   final int newUserDiscountWindowDays;
   final String? newUserDiscountText;
+  final GatewayBrandProfile? brandProfile;
+  final GatewayFeatureFlags? featureFlags;
+  final GatewayPortalSchema? portalSchema;
+  final List<GatewayRoutingPreset> routingPresets;
+  final List<GatewayNetworkDiagnostic> diagnostics;
+  final GatewayHomeSurface? homeSurface;
+  final GatewayGrowthCenterSummary? growthCenter;
+  final GatewayReferralClaim? referralClaim;
+  final GatewayAssistantConfig? assistantConfig;
+  final GatewayIosGuide? iosGuide;
 
   int get trafficRemaining {
     final value = trafficTotal - trafficUsed;
@@ -375,6 +697,14 @@ class GatewayAccountSummary {
     final links = _asMap(map["links"]);
     final promo = _asMap(map["promo"]);
     final newUserDiscount = _asMap(promo["new_user_discount"]);
+    final routingPresets = (map["routing_presets"] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => GatewayRoutingPreset.fromMap(_asMap(item)))
+        .toList();
+    final diagnostics = (map["network_diagnostics"] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => GatewayNetworkDiagnostic.fromMap(_asMap(item)))
+        .toList();
 
     return GatewayAccountSummary(
       email: user["email"]?.toString() ?? "",
@@ -401,6 +731,20 @@ class GatewayAccountSummary {
       newUserDiscountPercent: _asInt(newUserDiscount["percent"]),
       newUserDiscountWindowDays: _asInt(newUserDiscount["window_days"]),
       newUserDiscountText: _asNullableString(newUserDiscount["text"]),
+      brandProfile: map["brand_profile"] is Map ? GatewayBrandProfile.fromMap(_asMap(map["brand_profile"])) : null,
+      featureFlags: map["feature_flags"] is Map ? GatewayFeatureFlags.fromMap(_asMap(map["feature_flags"])) : null,
+      portalSchema: map["portal_schema"] is Map ? GatewayPortalSchema.fromMap(_asMap(map["portal_schema"])) : null,
+      routingPresets: routingPresets,
+      diagnostics: diagnostics,
+      homeSurface: map["home_surface"] is Map ? GatewayHomeSurface.fromMap(_asMap(map["home_surface"])) : null,
+      growthCenter: map["growth_center_summary"] is Map
+          ? GatewayGrowthCenterSummary.fromMap(_asMap(map["growth_center_summary"]))
+          : null,
+      referralClaim: map["referral_claim"] is Map ? GatewayReferralClaim.fromMap(_asMap(map["referral_claim"])) : null,
+      assistantConfig: map["assistant_config"] is Map
+          ? GatewayAssistantConfig.fromMap(_asMap(map["assistant_config"]))
+          : null,
+      iosGuide: map["ios_guide"] is Map ? GatewayIosGuide.fromMap(_asMap(map["ios_guide"])) : null,
     );
   }
 }
@@ -460,6 +804,11 @@ class GatewayPlan {
     required this.id,
     required this.name,
     required this.description,
+    this.displaySummary,
+    this.displayHighlights = const [],
+    this.displayBadge,
+    this.displaySort = 0,
+    this.hiddenReason,
     required this.transferEnable,
     this.speedLimit,
     this.deviceLimit,
@@ -472,6 +821,11 @@ class GatewayPlan {
   final int id;
   final String name;
   final String description;
+  final String? displaySummary;
+  final List<String> displayHighlights;
+  final String? displayBadge;
+  final int displaySort;
+  final String? hiddenReason;
   final int transferEnable;
   final int? speedLimit;
   final int? deviceLimit;
@@ -489,6 +843,11 @@ class GatewayPlan {
       id: _asInt(map["id"]),
       name: map["name"]?.toString() ?? "",
       description: map["description"]?.toString() ?? "",
+      displaySummary: _asNullableString(map["display_summary"]),
+      displayHighlights: _asStringList(map["display_highlights_json"]),
+      displayBadge: _asNullableString(map["display_badge"]),
+      displaySort: _asInt(map["display_sort"]),
+      hiddenReason: _asNullableString(map["hidden_reason"]),
       transferEnable: _asInt(map["transfer_enable"]),
       speedLimit: map["speed_limit"] == null ? null : _asInt(map["speed_limit"]),
       deviceLimit: map["device_limit"] == null ? null : _asInt(map["device_limit"]),
@@ -501,6 +860,27 @@ class GatewayPlan {
       periods: periods,
     );
   }
+}
+
+class GatewayOrderCreateResult {
+  GatewayOrderCreateResult({
+    required this.orderNo,
+    this.checkoutToken,
+    this.nextAction,
+    this.createdAt,
+  });
+
+  final String orderNo;
+  final String? checkoutToken;
+  final String? nextAction;
+  final String? createdAt;
+
+  factory GatewayOrderCreateResult.fromMap(Map<String, dynamic> map) => GatewayOrderCreateResult(
+    orderNo: _asNullableString(map["order_no"]) ?? "",
+    checkoutToken: _asNullableString(map["checkout_token"]),
+    nextAction: _asNullableString(map["next_action"]),
+    createdAt: _asNullableString(map["created_at"]),
+  );
 }
 
 class GatewayPaymentMethod {
@@ -694,6 +1074,54 @@ class GatewayKnowledgeItem {
     title: _asNullableString(map["title"]) ?? "",
     body: _asNullableString(map["body"]) ?? "",
     updatedAt: _asNullableString(map["updated_at"]),
+  );
+}
+
+class GatewayAssistantChatResult {
+  GatewayAssistantChatResult({
+    required this.answer,
+    required this.provider,
+    this.model,
+    required this.fallback,
+    required this.ticketHandoffEnabled,
+    this.createdAt,
+  });
+
+  final String answer;
+  final String provider;
+  final String? model;
+  final bool fallback;
+  final bool ticketHandoffEnabled;
+  final String? createdAt;
+
+  factory GatewayAssistantChatResult.fromMap(Map<String, dynamic> map) => GatewayAssistantChatResult(
+    answer: _asNullableString(map["answer"]) ?? "",
+    provider: _asNullableString(map["provider"]) ?? "unknown",
+    model: _asNullableString(map["model"]),
+    fallback: _asBool(map["fallback"], false),
+    ticketHandoffEnabled: _asBool(map["ticket_handoff_enabled"], true),
+    createdAt: _asNullableString(map["created_at"]),
+  );
+}
+
+class GatewayAssistantTicketResult {
+  GatewayAssistantTicketResult({
+    required this.created,
+    this.ticketId,
+    this.subject,
+    this.createdAt,
+  });
+
+  final bool created;
+  final int? ticketId;
+  final String? subject;
+  final String? createdAt;
+
+  factory GatewayAssistantTicketResult.fromMap(Map<String, dynamic> map) => GatewayAssistantTicketResult(
+    created: _asBool(map["created"], false),
+    ticketId: map["ticket_id"] == null ? null : _asInt(map["ticket_id"]),
+    subject: _asNullableString(map["subject"]),
+    createdAt: _asNullableString(map["created_at"]),
   );
 }
 

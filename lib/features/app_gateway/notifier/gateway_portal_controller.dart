@@ -63,6 +63,11 @@ class SlothGatewayPortalController with AppLogger {
     return !_isBlank(token);
   }
 
+  Future<String?> readPendingInviteCode() async {
+    final store = await _store();
+    return store.readPendingInviteCode();
+  }
+
   Future<GatewayAuthPolicy> fetchAuthPolicy() {
     return _api.authPolicy();
   }
@@ -102,6 +107,7 @@ class SlothGatewayPortalController with AppLogger {
   Future<void> login({required String email, required String password}) async {
     final store = await _store();
     final deviceId = await store.readOrCreateDeviceId();
+    final claimId = store.readReferralClaimId();
     final appVersion = _ref.read(appInfoProvider).valueOrNull?.version;
     final result = await _api.login(
       email: email,
@@ -109,12 +115,20 @@ class SlothGatewayPortalController with AppLogger {
       deviceId: deviceId,
       platform: _platformLabel,
       appVersion: appVersion,
+      claimId: claimId,
     );
     await store.saveAuth(
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
       sessionId: result.sessionId,
     );
+    final referralClaim = result.referralClaim;
+    if (referralClaim != null && referralClaim.claimId.isNotEmpty) {
+      await store.saveReferralClaimId(referralClaim.claimId);
+      if ((referralClaim.inviteCode ?? "").isNotEmpty) {
+        await store.savePendingInviteCode(referralClaim.inviteCode!);
+      }
+    }
     _notifyUiRefresh();
     await _tryAutoSync("auth_login");
   }
@@ -127,6 +141,9 @@ class SlothGatewayPortalController with AppLogger {
   }) async {
     final store = await _store();
     final deviceId = await store.readOrCreateDeviceId();
+    final storedInviteCode = store.readPendingInviteCode();
+    final resolvedInviteCode = !_isBlank(inviteCode) ? inviteCode!.trim() : storedInviteCode;
+    final claimId = store.readReferralClaimId();
     final appVersion = _ref.read(appInfoProvider).valueOrNull?.version;
     final result = await _api.register(
       email: email,
@@ -135,13 +152,21 @@ class SlothGatewayPortalController with AppLogger {
       platform: _platformLabel,
       appVersion: appVersion,
       emailCode: emailCode,
-      inviteCode: inviteCode,
+      inviteCode: resolvedInviteCode,
+      claimId: claimId,
     );
     await store.saveAuth(
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
       sessionId: result.sessionId,
     );
+    final referralClaim = result.referralClaim;
+    if (referralClaim != null && referralClaim.claimId.isNotEmpty) {
+      await store.saveReferralClaimId(referralClaim.claimId);
+      if ((referralClaim.inviteCode ?? "").isNotEmpty) {
+        await store.savePendingInviteCode(referralClaim.inviteCode!);
+      }
+    }
     _notifyUiRefresh();
     await _tryAutoSync("auth_register");
     return result;
@@ -190,7 +215,7 @@ class SlothGatewayPortalController with AppLogger {
     return _api.paymentMethods(token!);
   }
 
-  Future<String> createOrder({required int planId, required String period, String? couponCode}) async {
+  Future<GatewayOrderCreateResult> createOrder({required int planId, required String period, String? couponCode}) async {
     final token = await _accessToken();
     if (_isBlank(token)) {
       throw GatewayApiException(message: "请先登录后再下单");
@@ -262,6 +287,34 @@ class SlothGatewayPortalController with AppLogger {
       throw GatewayApiException(message: "请先登录后再管理订单");
     }
     return _api.cancelOrder(accessToken: token!, orderNo: orderNo);
+  }
+
+  Future<GatewayAssistantChatResult> assistantChat({
+    required List<Map<String, String>> messages,
+    String? query,
+  }) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再使用智能助手");
+    }
+    return _api.assistantChat(accessToken: token!, messages: messages, query: query);
+  }
+
+  Future<GatewayAssistantTicketResult> assistantTicketHandoff({
+    required String question,
+    required String answer,
+    String? context,
+  }) async {
+    final token = await _accessToken();
+    if (_isBlank(token)) {
+      throw GatewayApiException(message: "请先登录后再提交工单");
+    }
+    return _api.assistantTicketHandoff(
+      accessToken: token!,
+      question: question,
+      answer: answer,
+      context: context,
+    );
   }
 
   Future<List<GatewayNoticeItem>> fetchNotices({int current = 1, int pageSize = 10}) async {

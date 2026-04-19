@@ -602,11 +602,16 @@ export class XboardAdapter {
   }): Promise<string> {
     const body: Record<string, unknown> = { plan_id: input.planId, period: input.period };
     if (input.couponCode) body.coupon_code = input.couponCode;
-    const tradeNo = await this.request<string>("POST", "/api/v1/user/order/save", body, input.authData);
-    if (!tradeNo || !tradeNo.toString().trim()) {
+    const raw = await this.request<unknown>("POST", "/api/v1/user/order/save", body, input.authData);
+    const direct = typeof raw === "string" || typeof raw === "number" ? String(raw).trim() : "";
+    if (direct) return direct;
+    const mapped = this.toRecord(raw);
+    const tradeNo =
+      this.toStringOrNull(this.pick(mapped, ["trade_no", "order_no", "orderNo", "tradeNo"])) ?? "";
+    if (!tradeNo.trim()) {
       throw new AppError(502, ErrorCodes.UPSTREAM_ERROR, "XBoard order save response missing trade number");
     }
-    return tradeNo.toString().trim();
+    return tradeNo.trim();
   }
 
   async checkCoupon(input: {
