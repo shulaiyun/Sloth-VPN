@@ -39,6 +39,7 @@
     commConfig: {},
     telegramBot: null,
     checkout: null,
+    highlightOrderNo: "",
     assistantChatHistory: [],
     message: null,
   };
@@ -735,6 +736,24 @@
     return map[Number(status)] || String(status ?? "-");
   }
 
+  function parseOrderTime(order) {
+    const raw = order?.created_at || order?.updated_at || order?.paid_at || "";
+    if (!raw) return 0;
+    const ms = Date.parse(String(raw));
+    if (Number.isFinite(ms)) return ms;
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+
+  function normalizeOrders(list) {
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => {
+      const dt = parseOrderTime(b) - parseOrderTime(a);
+      if (dt !== 0) return dt;
+      return String(b?.trade_no || "").localeCompare(String(a?.trade_no || ""));
+    });
+  }
+
   function plainText(html, limit = 160) {
     return String(html || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, limit);
   }
@@ -768,9 +787,9 @@
   }
 
   function resolvePlanSummary(plan, limit = 180) {
-    const displaySummary = compactPlanSummary(plan?.display_summary || "", 4, Math.max(limit, 220));
+    const displaySummary = compactPlanSummary(plan?.display_summary || "", 6, Math.max(limit, 420));
     if (displaySummary) return displaySummary;
-    return compactPlanSummary(plan?.content || "", 3, limit);
+    return compactPlanSummary(plan?.content || "", 5, Math.max(limit, 360));
   }
 
   function resolvePlanHighlights(plan) {
@@ -1296,6 +1315,7 @@
     let dragging = false;
     let longPressReady = false;
     let pressTimer = null;
+    let unbindSafetyListeners = null;
 
     function clampPosition(right, bottom) {
       const triggerRect = handle.getBoundingClientRect();
@@ -1356,6 +1376,15 @@
       persistPosition();
     }
 
+    function forceRelease(withSnap) {
+      clearPressTimer();
+      if (pointerId !== null && handle.hasPointerCapture && handle.hasPointerCapture(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
+      pointerId = null;
+      finalizeDrag(Boolean(withSnap));
+    }
+
     if (saved && Number.isFinite(saved.right) && Number.isFinite(saved.bottom)) {
       applyPosition(saved.right, saved.bottom);
     } else {
@@ -1364,6 +1393,9 @@
 
     handle.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
+      if (pointerId !== null) {
+        forceRelease(false);
+      }
       pointerId = event.pointerId;
       dragging = false;
       longPressReady = false;
@@ -1398,20 +1430,53 @@
       if (pointerId === null || event.pointerId !== pointerId) return;
       clearPressTimer();
       const shouldSnap = dragging || longPressReady;
-      if (handle.hasPointerCapture && handle.hasPointerCapture(pointerId)) {
-        handle.releasePointerCapture(pointerId);
-      }
-      pointerId = null;
-      finalizeDrag(shouldSnap);
+      forceRelease(shouldSnap);
     }
 
     handle.addEventListener("pointerup", finishPointer);
     handle.addEventListener("pointercancel", finishPointer);
+    handle.addEventListener("lostpointercapture", () => {
+      if (pointerId !== null) {
+        forceRelease(false);
+      }
+    });
+    const onWindowPointerEnd = (event) => finishPointer(event);
+    const onWindowBlur = () => {
+      if (pointerId !== null) {
+        forceRelease(false);
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden && pointerId !== null) {
+        forceRelease(false);
+      }
+    };
+    window.addEventListener("pointerup", onWindowPointerEnd, true);
+    window.addEventListener("pointercancel", onWindowPointerEnd, true);
+    window.addEventListener("blur", onWindowBlur);
+    document.addEventListener("visibilitychange", onVisibility);
+    unbindSafetyListeners = () => {
+      window.removeEventListener("pointerup", onWindowPointerEnd, true);
+      window.removeEventListener("pointercancel", onWindowPointerEnd, true);
+      window.removeEventListener("blur", onWindowBlur);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
     window.addEventListener("resize", () => {
       const rect = wrapper.getBoundingClientRect();
       applyPosition(window.innerWidth - rect.right, window.innerHeight - rect.bottom);
       persistPosition();
     });
+    wrapper.addEventListener(
+      "DOMNodeRemoved",
+      () => {
+        if (typeof unbindSafetyListeners === "function") {
+          unbindSafetyListeners();
+          unbindSafetyListeners = null;
+        }
+        forceRelease(false);
+      },
+      { once: true },
+    );
   }
 
   function navigate(path) {
@@ -1451,7 +1516,7 @@
     }
     await Promise.all([
       api("/user/getSubscribe").then((data) => { state.subscription = data; }).catch(() => {}),
-      api("/user/order/fetch").then((data) => { state.orders = data || []; }).catch(() => {}),
+      api("/user/order/fetch").then((data) => { state.orders = normalizeOrders(data || []); }).catch(() => {}),
       api("/user/notice/fetch").then((data) => { state.notices = data?.data || data || []; }).catch(() => {}),
       api("/user/invite/fetch").then((data) => {
         state.invite = data;
@@ -1483,6 +1548,9 @@
           state.telegramBot = null;
         }),
     ]);
+    if (state.highlightOrderNo && !state.orders.some((item) => String(item?.trade_no || "") === state.highlightOrderNo)) {
+      state.highlightOrderNo = "";
+    }
     render();
   }
 
@@ -1506,6 +1574,7 @@
     state.user = null;
     state.subscription = null;
     state.orders = [];
+    state.highlightOrderNo = "";
     state.invite = null;
     localStorage.removeItem("slothpro_auth_data");
     localStorage.removeItem("slothpro_user_token");
@@ -2149,7 +2218,10 @@
 
   function orderTable(orders, withActions = false) {
     if (!orders || !orders.length) return `<div class="empty">${esc(t("noOrders"))}</div>`;
-    return `<div class="table-wrap"><table class="data-table"><thead><tr><th>${esc(t("orderNo"))}</th><th>${esc(t("planName"))}</th><th>${esc(t("period"))}</th><th>${esc(t("amount"))}</th><th>${esc(t("status"))}</th><th>${esc(t("createdAt"))}</th>${withActions ? `<th>${esc(t("operation"))}</th>` : ""}</tr></thead><tbody>${orders.map((order) => `<tr><td>${esc(order.trade_no || "-")}</td><td>${esc(order.plan?.name || "-")}</td><td>${esc(periodLabels()[order.period] || order.period || "-")}</td><td>${esc(formatMoney(order.total_amount || 0))}</td><td><span class="status-pill status-${esc(order.status)}">${esc(orderStatusText(order.status))}</span></td><td>${esc(formatDate(order.created_at))}</td>${withActions ? `<td>${orderActions(order)}</td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr><th>${esc(t("orderNo"))}</th><th>${esc(t("planName"))}</th><th>${esc(t("period"))}</th><th>${esc(t("amount"))}</th><th>${esc(t("status"))}</th><th>${esc(t("createdAt"))}</th>${withActions ? `<th>${esc(t("operation"))}</th>` : ""}</tr></thead><tbody>${orders.map((order) => {
+      const highlighted = state.highlightOrderNo && String(order.trade_no || "") === String(state.highlightOrderNo);
+      return `<tr class="${highlighted ? "order-row-highlight" : ""}"><td>${esc(order.trade_no || "-")}</td><td>${esc(order.plan?.name || "-")}</td><td>${esc(periodLabels()[order.period] || order.period || "-")}</td><td>${esc(formatMoney(order.total_amount || 0))}</td><td><span class="status-pill status-${esc(order.status)}">${esc(orderStatusText(order.status))}</span></td><td>${esc(formatDate(order.created_at))}</td>${withActions ? `<td>${orderActions(order)}</td>` : ""}</tr>`;
+    }).join("")}</tbody></table></div>`;
   }
 
   function orderActions(order) {
@@ -2361,12 +2433,15 @@
       const saved = await api("/user/order/save", { method: "POST", body });
       const tradeNo = resolveOrderNoFromSave(saved);
       if (!tradeNo) throw new Error(t("networkError"));
+      state.highlightOrderNo = String(tradeNo);
       state.checkout = null;
       state.message = { message: `${t("orderCreated")} ${t("orderNo")}: ${tradeNo}`, type: "success" };
       await loadProtected();
       await checkoutByTrade(tradeNo, checkout.method);
-      if (!currentPath().startsWith("/portal")) {
-        navigate("/portal/plans");
+      if (!currentPath().startsWith("/portal/orders")) {
+        navigate("/portal/orders");
+      } else {
+        render();
       }
     } catch (error) {
       setMessage(error.message || t("networkError"), "error");
