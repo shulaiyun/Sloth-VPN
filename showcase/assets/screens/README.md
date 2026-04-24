@@ -2,14 +2,12 @@
 
 Put sanitized production screenshots here before publishing the public showcase repository.
 
-Recommended filenames:
+Current public showcase screenshots:
 
-- `frontend.png`
-- `admin.png`
-- `payment.png`
-- `assistant.png`
-- `download.png`
-- `android-app.png`
+- `live-home-pricing.png`: public SlothPro pricing and new-user offer page
+- `live-download.png`: download center and iOS tutorial entry
+- `live-features.png`: product capability page
+- `app-account-center.jpg`: mobile account center with AI assistant entry
 
 Do not include:
 
