@@ -1,0 +1,69 @@
+{
+  "$schema": "./brand.manifest.schema.json",
+  "brand": {
+    "id": "sloth-demo",
+    "code": "sloth-demo",
+    "name": "树懒云",
+    "tagline": "安全 / 稳定 / 快速",
+    "description": "面向机场主和终端用户的一体化 VPN 服务面板",
+    "logo_url": "https://cdn.example.com/brands/sloth/logo.png",
+    "primary_color": "#0F4D9B",
+    "secondary_color": "#0BB8D0",
+    "accent_color": "#27D1B1",
+    "font_family": "Sora, Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif",
+    "deployment_mode": "self_hosted",
+    "support": {
+      "email": "support@example.com",
+      "telegram": "https://t.me/example_support"
+    }
+  },
+  "gateway": {
+    "public_base_url": "https://gateway.example.com",
+    "xboard_base_url": "https://panel.example.com",
+    "xboard_web_base_url": "https://panel.example.com",
+    "app_deep_link_scheme": "slothdemo"
+  },
+  "web": {
+    "home_hero_title": "全系列AI可以使用✅，树赖云的初衷是帮助更多的人打开世界的大门🔑",
+    "home_hero_lead": "稳定访问与跨境协作的一站式连接方案。",
+    "ios_guide_title": "iOS 安装教程",
+    "ios_guide_url": "https://download.example.com/ios",
+    "ios_shared_account_url": "https://idshare.example.com",
+    "ios_apple_id_register_url": "https://appleid.apple.com/account",
+    "ios_guide_markdown": "## iOS 下载说明\n1. 使用外区 Apple ID 登录。\n2. 搜索并下载客户端。\n3. 回到站点一键导入订阅。",
+    "new_user_discount_enabled": true,
+    "new_user_discount_percent": 15,
+    "new_user_discount_days": 7,
+    "new_user_discount_text": "新用户注册 7 天内自动享 15% 优惠"
+  },
+  "app": {
+    "name": "树懒云",
+    "scheme": "slothdemo",
+    "android": {
+      "application_id": "top.example.slothdemo",
+      "app_name": "树懒云"
+    },
+    "ios": {
+      "bundle_id": "top.example.slothdemo",
+      "display_name": "树懒云"
+    },
+    "macos": {
+      "bundle_id": "top.example.slothdemo.macos",
+      "display_name": "树懒云"
+    },
+    "windows": {
+      "product_name": "SlothDemo",
+      "exe_name": "SlothDemo.exe"
+    },
+    "linux": {
+      "app_id": "top.example.slothdemo",
+      "package_name": "slothdemo"
+    }
+  },
+  "migration": {
+    "customer_id": "demo-001",
+    "source_panel": "xboard",
+    "source_version": "1.7.x",
+    "notes": "Xboard 同库迁移示例，真实项目请先跑 preflight"
+  }
+}

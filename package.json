@@ -1,0 +1,12 @@
+{
+  "name": "slothvpn-white-label-release",
+  "private": true,
+  "scripts": {
+    "customer:init": "node ops/white-label/scripts/customer.mjs init",
+    "customer:apply": "node ops/white-label/scripts/customer.mjs apply",
+    "customer:deploy": "node ops/white-label/scripts/customer.mjs deploy",
+    "customer:build": "node ops/white-label/scripts/customer.mjs build",
+    "customer:deliver": "node ops/white-label/scripts/customer.mjs deliver",
+    "showcase:serve": "python3 -m http.server 4173 -d showcase"
+  }
+}

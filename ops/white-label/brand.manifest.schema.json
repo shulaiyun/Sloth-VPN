@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slothvpn.local/schemas/brand.manifest.schema.json",
+  "title": "SlothVPN White-Label Brand Manifest",
+  "type": "object",
+  "required": [
+    "brand",
+    "gateway",
+    "web",
+    "app"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "brand": {
+      "type": "object",
+      "required": [
+        "id",
+        "code",
+        "name"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 2 },
+        "code": { "type": "string", "minLength": 2 },
+        "name": { "type": "string", "minLength": 2 },
+        "tagline": { "type": "string" },
+        "description": { "type": "string" },
+        "logo_url": { "type": "string" },
+        "primary_color": { "type": "string" },
+        "secondary_color": { "type": "string" },
+        "accent_color": { "type": "string" },
+        "font_family": { "type": "string" },
+        "deployment_mode": { "type": "string" },
+        "support": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "email": { "type": "string" },
+            "telegram": { "type": "string" }
+          }
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "required": [
+        "public_base_url",
+        "xboard_base_url",
+        "xboard_web_base_url",
+        "app_deep_link_scheme"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "public_base_url": { "type": "string", "minLength": 4 },
+        "xboard_base_url": { "type": "string", "minLength": 4 },
+        "xboard_web_base_url": { "type": "string", "minLength": 4 },
+        "app_deep_link_scheme": { "type": "string", "pattern": "^[a-z][a-z0-9+.-]*$" }
+      }
+    },
+    "web": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "home_hero_title": { "type": "string" },
+        "home_hero_lead": { "type": "string" },
+        "ios_guide_title": { "type": "string" },
+        "ios_guide_url": { "type": "string" },
+        "ios_shared_account_url": { "type": "string" },
+        "ios_apple_id_register_url": { "type": "string" },
+        "ios_guide_markdown": { "type": "string" },
+        "new_user_discount_enabled": { "type": "boolean" },
+        "new_user_discount_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "new_user_discount_days": { "type": "integer", "minimum": 1, "maximum": 365 },
+        "new_user_discount_text": { "type": "string" }
+      }
+    },
+    "app": {
+      "type": "object",
+      "required": [
+        "name",
+        "scheme"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "scheme": { "type": "string", "pattern": "^[a-z][a-z0-9+.-]*$" },
+        "android": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "application_id": { "type": "string" },
+            "app_name": { "type": "string" }
+          }
+        },
+        "ios": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "bundle_id": { "type": "string" },
+            "display_name": { "type": "string" }
+          }
+        },
+        "macos": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "bundle_id": { "type": "string" },
+            "display_name": { "type": "string" }
+          }
+        },
+        "windows": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "product_name": { "type": "string" },
+            "exe_name": { "type": "string" }
+          }
+        },
+        "linux": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "app_id": { "type": "string" },
+            "package_name": { "type": "string" }
+          }
+        }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "customer_id": { "type": "string" },
+        "source_panel": { "type": "string" },
+        "source_version": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

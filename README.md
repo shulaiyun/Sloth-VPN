@@ -17,6 +17,18 @@
 - 多平台支持：项目面向 Android、Windows、Linux、macOS、iOS 工程统一维护。
 - 可持续构建与发布：仓库已接入 GitHub Actions，逐步完善自动构建、产物归档和 Release 分发。
 
+## 白牌面板演示
+
+面向机场主的白牌交付演示站已放在 `showcase/`，首屏模拟真实部署后的 SlothPro 前台，而不是单独的营销页。演示内容包括品牌前台、套餐价格、下载中心、iOS 教程入口、AI 助手、控制台入口和咨询部署入口。
+
+本地预览：
+
+```bash
+npm run showcase:serve
+```
+
+公开 Pages 部署由 `.github/workflows/showcase-pages.yml` 负责。客户交付 SOP、iOS 分发说明和白牌部署流程见 `docs/` 与 `ops/white-label/`。
+
 ## 当前定位
 
 - 项目名称：树懒VPN（SlothVPN）
@@ -105,4 +117,3 @@
 ## 免责声明
 
 本项目仅用于合法合规的网络访问、连接管理与技术研究用途。使用者应自行确保其使用方式符合所在地区的法律法规、服务条款及相关政策。因不当使用本项目造成的任何风险与后果，由使用者自行承担。
-
