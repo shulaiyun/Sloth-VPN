@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>阿瓜云演示站 - SlothVPN 白牌面板</title>
+    <title>树懒云演示站 - SlothVPN 白牌面板</title>
     <meta
       name="description"
       content="SlothVPN 白牌面板真实前台演示：套餐价格、下载中心、帮助支持、控制台入口、AI 助手与客户品牌定制。"
@@ -13,16 +13,18 @@
   <body>
     <div class="demo-ribbon" role="note">
       <strong>白牌演示</strong>
-      <span>这里模拟客户品牌“阿瓜云”，真实交付时会替换为客户自己的品牌名、Logo、域名、下载链接和安装包。</span>
+      <span>这里展示树懒云真实部署风格，控制台入口与咨询入口都可直接点击使用。</span>
       <a href="#contact">申请部署</a>
     </div>
 
     <header class="topbar">
       <div class="container topbar-inner">
-        <a class="brand" href="#pricing" aria-label="阿瓜云首页">
-          <span class="brand-logo"><span>瓜</span></span>
+        <a class="brand" href="#pricing" aria-label="树懒云首页">
+          <span class="brand-logo">
+            <img src="./assets/sloth-hero.png" alt="树懒云 Logo" />
+          </span>
           <span class="brand-text">
-            <span class="brand-name">阿瓜云</span>
+            <span class="brand-name">树懒VPN</span>
             <span class="brand-sub">面向机场主的一体化 VPN 面板</span>
           </span>
         </a>
@@ -36,8 +38,8 @@
         <div class="top-actions">
           <button class="theme-toggle" type="button" aria-label="夜间模式">☾ 夜间</button>
           <button class="locale-select" type="button">🇨🇳 简体中文</button>
-          <a class="btn ghost" href="#login">登录</a>
-          <a class="btn primary" href="#register">注册</a>
+          <a class="btn ghost" href="https://admin.shulaiyun.top/#/login" target="_blank" rel="noopener noreferrer">登录</a>
+          <a class="btn primary" href="https://admin.shulaiyun.top/#/register" target="_blank" rel="noopener noreferrer">注册</a>
         </div>
       </div>
     </header>
@@ -118,7 +120,7 @@
 
       <section id="features" class="section feature-section">
         <div class="container section-head">
-          <span class="eyebrow">为什么选择阿瓜云</span>
+          <span class="eyebrow">为什么选择树懒云</span>
           <h2>面向机场主可成交、可迁移、可出包的品牌面板</h2>
           <p class="section-desc">这不是原版 XBoard 登录页，而是一整套前台、后台、网关、App、AI 助手、打包和交付流程。</p>
         </div>
@@ -134,15 +136,15 @@
         <div class="container section-head inline">
           <div>
             <span class="eyebrow">客户端</span>
-            <h2>下载阿瓜云客户端</h2>
+            <h2>下载树懒云客户端</h2>
           </div>
           <p class="section-desc">真实部署后，下载地址从后台 App 设置读取；iOS 会展示站内教程弹窗，再由用户选择共享账号或 Apple 官方外区账号注册入口。</p>
         </div>
         <div class="container download-grid">
-          <article><span>Windows</span><strong>桌面客户端</strong><p>支持一键导入订阅、自动更新和协议唤起。</p><button>下载 Windows</button></article>
-          <article><span>macOS</span><strong>Mac 客户端</strong><p>面向 macOS 用户的品牌安装包，可按客户品牌命名。</p><button>下载 macOS</button></article>
-          <article><span>Android</span><strong>安卓 APK</strong><p>可直接分发 APK，也可以继续接入客户自己的下载域名。</p><button>下载 Android</button></article>
-          <article class="ios-card"><span>iOS</span><strong>iOS 安装教程</strong><p>站内先显示教程说明，再提供两个清晰入口。</p><div class="ios-actions"><button>获取共享账号</button><button>Apple 官方注册外区账号</button></div></article>
+          <article><span>Windows</span><strong>桌面客户端</strong><p>支持一键导入订阅、自动更新和协议唤起。</p><a class="download-btn" href="https://down.shulaiyun.top/hiddify-Windows-Setup-x64.Msix" target="_blank" rel="noopener noreferrer">下载 Windows</a></article>
+          <article><span>macOS</span><strong>Mac 客户端</strong><p>面向 macOS 用户的品牌安装包，可按客户品牌命名。</p><a class="download-btn" href="https://down.shulaiyun.top/hiddify-MacOS.dmg" target="_blank" rel="noopener noreferrer">下载 macOS</a></article>
+          <article><span>Android</span><strong>安卓 APK</strong><p>可直接分发 APK，也可以继续接入客户自己的下载域名。</p><a class="download-btn" href="https://down.shulaiyun.top/hiddify.apk" target="_blank" rel="noopener noreferrer">下载 Android</a></article>
+          <article class="ios-card"><span>iOS</span><strong>iOS 安装教程</strong><p>站内先显示教程说明，再提供两个清晰入口。</p><div class="ios-actions"><a class="download-btn" href="https://idshare001.me/" target="_blank" rel="noopener noreferrer">获取共享账号</a><a class="download-btn" href="https://appleid.apple.com/account" target="_blank" rel="noopener noreferrer">Apple 官方注册外区账号</a></div></article>
         </div>
       </section>
 
@@ -169,13 +171,13 @@
             <span class="eyebrow">用户控制台</span>
             <h2>核心入口放在首屏可见位置</h2>
             <p>登录后用户能集中处理连接、套餐、订单、下载和同步订阅，不需要在多个入口里迷路。</p>
-            <a class="btn primary" href="#login">进入控制台</a>
+            <a class="btn primary" href="https://admin.shulaiyun.top/portal" target="_blank" rel="noopener noreferrer">进入控制台</a>
           </article>
           <article>
             <span class="eyebrow">运营后台</span>
             <h2>客户自己管理业务，你方负责交付兜底</h2>
             <p>品牌、套餐、优惠、支付、教程、节点、工单和公告都在后台维护；你方可以代部署、代升级、代打包。</p>
-            <a class="btn ghost" href="#contact">咨询代部署</a>
+            <a class="btn ghost" href="https://admin.shulaiyun.top/10309e1a#/login" target="_blank" rel="noopener noreferrer">打开运营后台</a>
           </article>
         </div>
       </section>
@@ -187,24 +189,27 @@
             <h2>客户给品牌资料和服务器，我们给他交付一套可上线收款的面板</h2>
             <p class="section-desc">支持新开站、Xboard 同库迁移、客户品牌前台、后台配置、下载中心、AI 助手和 Android / Windows / macOS 安装包。</p>
           </div>
-          <form class="contact-form">
-            <label>品牌名<input placeholder="例如：阿瓜云" /></label>
-            <label>联系方式<input placeholder="Telegram / Email" /></label>
-            <label>当前面板<select><option>Xboard 迁移</option><option>新开站</option><option>其他面板，需人工评估</option></select></label>
-            <a class="btn primary full" href="mailto:support@example.com?subject=SlothVPN 白牌面板咨询">发送咨询</a>
+          <form class="contact-form" id="contact-form">
+            <label>品牌名<input id="contact-brand" placeholder="例如：树懒云" /></label>
+            <label>联系方式<input id="contact-channel" placeholder="Telegram / Email / 微信" /></label>
+            <label>当前面板<select id="contact-panel"><option>Xboard 迁移</option><option>新开站</option><option>其他面板，需人工评估</option></select></label>
+            <button class="btn primary full" type="button" id="contact-submit">发送咨询到 Telegram</button>
+            <a class="btn ghost full" href="https://admin.shulaiyun.top/pricing" target="_blank" rel="noopener noreferrer">先看真实线上前台</a>
+            <p class="contact-status" id="contact-status">点击发送后会自动打开 Telegram 联系窗口，并复制咨询内容。</p>
           </form>
         </div>
       </section>
     </main>
 
-    <a class="console-fab" href="#console" aria-label="进入控制台"><span>⌘</span>进入控制台</a>
+    <a class="console-fab" href="https://admin.shulaiyun.top/portal" target="_blank" rel="noopener noreferrer" aria-label="进入控制台"><span>⌘</span>进入控制台</a>
     <button class="ai-fab" type="button" aria-label="AI 助手">AI</button>
 
     <footer class="footer">
       <div class="container footer-inner">
-        <span>阿瓜云 · 白牌演示实例</span>
+        <span>树懒云 · 白牌演示实例</span>
         <span>公开演示不包含核心源码、客户数据、部署密钥和真实支付配置。</span>
       </div>
     </footer>
+    <script src="./main.js"></script>
   </body>
 </html>
