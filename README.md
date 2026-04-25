@@ -1,6 +1,6 @@
 # 树懒VPN（SlothVPN）白牌面板
 
-面向机场主、代理网络运营者和已有 XBoard 站点的白牌交付方案。我们提供一套可以直接上线收款的品牌面板，而不是只交付一个原生后台：前台成交页、用户控制台、后台运营配置、客户端下载中心、iOS 教程、AI 业务助手、Android / Windows / macOS 安装包和交付验收流程一起打包。
+面向机场主、代理网络运营者和已有 XBoard 站点的白牌交付方案。我们提供一套可以直接上线收款的品牌面板，而不是只交付一个原生后台：前台成交页、用户控制台、后台运营配置、客户端下载中心、iOS 教程、AI 业务助手、Android / Windows / macOS 安装包和交付验收流程一起打包。自研API对接应用端（端到端一体化的产品）
 
 [公开演示站](https://shulaiyun.github.io/Sloth-VPN/) | [真实线上前台](https://admin.shulaiyun.top/pricing) | [用户控制台](https://admin.shulaiyun.top/portal) | [Telegram 咨询](https://t.me/shulai2026)
 
