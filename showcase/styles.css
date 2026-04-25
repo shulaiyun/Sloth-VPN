@@ -277,6 +277,44 @@ h3 { margin-bottom: 10px; font-size: 22px; }
 }
 .evidence-card figcaption strong { font-size: 20px; }
 .evidence-card figcaption span { color: var(--muted); line-height: 1.62; }
+.phone-head { margin-top: 48px; }
+.phone-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.phone-card {
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(21,169,232,.1), transparent 34%),
+    var(--panel-strong);
+  box-shadow: 0 20px 70px rgba(2, 8, 18, .34);
+}
+.phone-card img {
+  display: block;
+  width: 100%;
+  height: 520px;
+  object-fit: cover;
+  object-position: top center;
+  background: #071120;
+}
+.phone-card figcaption {
+  display: grid;
+  gap: 7px;
+  min-height: 148px;
+  padding: 16px 16px 18px;
+  border-top: 1px solid var(--line);
+}
+.phone-card figcaption strong { font-size: 17px; }
+.phone-card figcaption span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
 .download-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .download-grid article { padding: 26px; }
 .download-grid span { color: #7ad8ff; font-weight: 1000; }
@@ -352,6 +390,7 @@ h3 { margin-bottom: 10px; font-size: 22px; }
   .nav { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; padding-bottom: 6px; }
   .page-hero-grid, .support-grid, .contact-card { grid-template-columns: 1fr; }
   .pricing-grid, .feature-grid, .download-grid, .compare-grid, .evidence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .phone-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .compare-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
@@ -365,7 +404,7 @@ h3 { margin-bottom: 10px; font-size: 22px; }
   h2 { font-size: 34px; }
   .page-hero { padding-top: 46px; }
   .section { padding: 50px 0; }
-  .pricing-grid, .feature-grid, .download-grid, .console-grid, .section-head.inline, .evidence-grid { grid-template-columns: 1fr; }
+  .pricing-grid, .feature-grid, .download-grid, .console-grid, .section-head.inline, .evidence-grid, .phone-grid { grid-template-columns: 1fr; }
   .plan-card { min-height: auto; padding: 24px; }
   .plan-card ul { min-height: 0; }
   .price { font-size: 48px; }
@@ -373,6 +412,7 @@ h3 { margin-bottom: 10px; font-size: 22px; }
   .evidence-card.wide { grid-column: auto; }
   .evidence-card img, .evidence-card.wide img { height: 300px; }
   .evidence-card.app-shot img { height: 520px; }
+  .phone-card img { height: auto; }
   .console-fab { display: none; }
   .ai-fab { width: 58px; height: 58px; right: 18px; bottom: 24px; }
   .footer-inner { flex-direction: column; }
